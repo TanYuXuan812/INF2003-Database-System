@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Portal - Movie Database</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f7fafc;
+        }
+        .header {
+            background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+            color: white;
+            padding: 20px 40px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header h1 {
+            font-size: 1.8em;
+        }
+        .header p {
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+        nav {
+            background: white;
+            padding: 15px 40px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            display: flex;
+            gap: 10px;
+        }
+        nav button {
+            padding: 10px 20px;
+            background: #e2e8f0;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        nav button.active {
+            background: #667eea;
+            color: white;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+        .section {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        h2 {
+            color: #2d3748;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        th {
+            background: #f7fafc;
+            font-weight: 600;
+            color: #2d3748;
+        }
+        tr:hover {
+            background: #f7fafc;
+        }
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        .btn-secondary {
+            background: #4a5568;
+            color: white;
+        }
+        .btn-danger {
+            background: #f56565;
+            color: white;
+        }
+        .btn:hover {
+            opacity: 0.9;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 8px;
+        }
+        .stat-card h3 {
+            font-size: 2.5em;
+            margin-bottom: 5px;
+        }
+        .stat-card p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+        .code-block {
+            background: #2d3748;
+            color: #68d391;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #4a5568;
+        }
+        .error {
+            background: #fed7d7;
+            color: #c53030;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .success {
+            background: #c6f6d5;
+            color: #276749;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.show {
+            display: flex;
+        }
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            width: 90%;
+        }
+        .close-modal {
+            float: right;
+            font-size: 24px;
+            cursor: pointer;
+            color: #4a5568;
+        }
+        .tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 20px;
+        }
+        .tab-btn {
+            padding: 10px 20px;
+            background: #e2e8f0;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px 5px 0 0;
+        }
+        .tab-btn.active {
+            background: #667eea;
+            color: white;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background: #bee3f8;
+            color: #2c5282;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔧 Admin Portal</h1>
+        <p>Movie Database Management & Diagnostics</p>
+    </div>
+
+    <nav>
+        <button class="active" onclick="showSection('dashboard')">Dashboard</button>
+        <button onclick="showSection('movies')">Movies</button>
+        <button onclick="showSection('analytics')">SQL Analytics</button>
+        <button onclick="showSection('nosql')">MongoDB Analytics</button>
+        <button onclick="showSection('diagnostics')">Diagnostics</button>
+        <button onclick="window.location.href='/'">← Back to User Portal</button>
+    </nav>
+
+    <div class="container">
+        <!-- Dashboard Section -->
+        <div id="section-dashboard" class="section">
+            <h2>System Dashboard</h2>
+            <div class="stats-grid" id="dashboardStats">
+                <div class="loading">Loading stats...</div>
+            </div>
+            <h2 style="margin-top: 30px;">Database Health</h2>
+            <div id="healthStatus"></div>
+        </div>
+
+        <!-- Movies Section -->
+        <div id="section-movies" class="section" style="display:none;">
+            <h2>Movie Management</h2>
+            <p>Browse and manage movies in the PostgreSQL database.</p>
+            <div style="margin: 20px 0;">
+                <input type="text" id="movieSearch" placeholder="Search movies..." style="padding: 10px; width: 300px; margin-right: 10px;">
+                <button class="btn btn-primary" onclick="loadMovies()">Search</button>
+            </div>
+            <div id="moviesTable"></div>
+        </div>
+
+        <!-- SQL Analytics Section -->
+        <div id="section-analytics" class="section" style="display:none;">
+            <h2>SQL Analytics (PostgreSQL Views)</h2>
+
+            <div class="tabs">
+                <button class="tab-btn active" onclick="showAnalyticsTab('top-rated')">Top Rated Movies</button>
+                <button class="tab-btn" onclick="showAnalyticsTab('genre-stats')">Genre Statistics</button>
+                <button class="tab-btn" onclick="showAnalyticsTab('per-genre')">Top Per Genre</button>
+                <button class="tab-btn" onclick="showAnalyticsTab('explain')">EXPLAIN Plans</button>
+            </div>
+
+            <div id="analytics-content"></div>
+        </div>
+
+        <!-- MongoDB Analytics Section -->
+        <div id="section-nosql" class="section" style="display:none;">
+            <h2>MongoDB Analytics</h2>
+
+            <div class="tabs">
+                <button class="tab-btn active" onclick="showNoSQLTab('funnel')">Event Funnel</button>
+                <button class="tab-btn" onclick="showNoSQLTab('trending')">Trending Movies</button>
+                <button class="tab-btn" onclick="showNoSQLTab('conversion')">Conversion Funnel</button>
+                <button class="tab-btn" onclick="showNoSQLTab('engagement')">User Engagement</button>
+                <button class="tab-btn" onclick="showNoSQLTab('pipelines')">Pipeline Viewer</button>
+            </div>
+
+            <div id="nosql-content"></div>
+        </div>
+
+        <!-- Diagnostics Section -->
+        <div id="section-diagnostics" class="section" style="display:none;">
+            <h2>System Diagnostics</h2>
+
+            <h3 style="margin-top: 20px;">PostgreSQL Indexes</h3>
+            <div id="indexesList"></div>
+
+            <h3 style="margin-top: 30px;">MongoDB Collection Statistics</h3>
+            <div id="mongoStats"></div>
+        </div>
+    </div>
+
+    <!-- Modal for viewing details -->
+    <div id="detailModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal()">&times;</span>
+            <div id="modalContent"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin + '/api';
+
+        function showSection(section) {
+            document.querySelectorAll('[id^="section-"]').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('nav button').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(`section-${section}`).style.display = 'block';
+
+            // Load data for section
+            if (section === 'dashboard') loadDashboard();
+            if (section === 'movies') loadMovies();
+            if (section === 'analytics') showAnalyticsTab('top-rated');
+            if (section === 'nosql') showNoSQLTab('funnel');
+            if (section === 'diagnostics') loadDiagnostics();
+        }
+
+        async function loadDashboard() {
+            try {
+                // Load health
+                const healthRes = await fetch(`/health`);
+                const health = await healthRes.json();
+                document.getElementById('healthStatus').innerHTML = `
+                    <div class="${health.status === 'healthy' ? 'success' : 'error'}">
+                        <strong>Status:</strong> ${health.status.toUpperCase()}<br>
+                        <strong>PostgreSQL:</strong> ${health.databases.postgresql}<br>
+                        <strong>MongoDB:</strong> ${health.databases.mongodb}
+                    </div>
+                `;
+
+                // Load genre stats for dashboard
+                const genreRes = await fetch(`${API_BASE}/sql/analytics/genre-stats`);
+                const genres = await genreRes.json();
+
+                const statsGrid = document.getElementById('dashboardStats');
+                statsGrid.innerHTML = genres.slice(0, 4).map(g => `
+                    <div class="stat-card">
+                        <h3>${g.movie_count}</h3>
+                        <p>${g.genre_name} Movies</p>
+                        <p style="font-size: 0.9em;">Avg Rating: ${Number(g.avg_rating).toFixed(1)}</p>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+            }
+        }
+
+        async function loadMovies() {
+            const search = document.getElementById('movieSearch').value;
+            const table = document.getElementById('moviesTable');
+            table.innerHTML = '<div class="loading">Loading movies...</div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/sql/movies?search=${search}&page_size=20`);
+                const data = await response.json();
+
+                if (data.data && data.data.length > 0) {
+                    table.innerHTML = `
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Title</th>
+                                    <th>Released</th>
+                                    <th>Genres</th>
+                                    <th>Avg Rating</th>
+                                    <th>Ratings</th>
+                                    <th>Popularity</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.data.map(m => `
+                                    <tr>
+                                        <td>${m.movie_id}</td>
+                                        <td>${m.title}</td>
+                                        <td>${m.released_date || 'N/A'}</td>
+                                        <td>${m.genres || 'N/A'}</td>
+                                        <td>⭐ ${Number(m.avg_rating).toFixed(1)}</td>
+                                        <td>${m.rating_count}</td>
+                                        <td>${Number(m.popularity).toFixed(1)}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                } else {
+                    table.innerHTML = '<div class="loading">No movies found</div>';
+                }
+            } catch (error) {
+                table.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        }
+
+        async function showAnalyticsTab(tab) {
+            document.querySelectorAll('#section-analytics .tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            const content = document.getElementById('analytics-content');
+            content.innerHTML = '<div class="loading">Loading...</div>';
+
+            try {
+                if (tab === 'top-rated') {
+                    const res = await fetch(`${API_BASE}/sql/analytics/top-rated`);
+                    const data = await res.json();
+                    content.innerHTML = `
+                        <p><span class="badge">View: v_top_rated_movies</span> Movies with avg_rating >= 4.0 and at least 10 ratings</p>
+                        <table>
+                            <thead><tr><th>Movie ID</th><th>Title</th><th>Released</th><th>Rating</th><th>Count</th><th>Genres</th></tr></thead>
+                            <tbody>
+                                ${data.map(m => `
+                                    <tr>
+                                        <td>${m.movie_id}</td>
+                                        <td>${m.title}</td>
+                                        <td>${m.released_date || 'N/A'}</td>
+                                        <td>⭐ ${Number(m.avg_rating).toFixed(2)}</td>
+                                        <td>${m.rating_count}</td>
+                                        <td>${m.genres || 'N/A'}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                } else if (tab === 'genre-stats') {
+                    const res = await fetch(`${API_BASE}/sql/analytics/genre-stats`);
+                    const data = await res.json();
+                    content.innerHTML = `
+                        <p><span class="badge">View: v_genre_stats</span> Aggregated statistics per genre</p>
+                        <table>
+                            <thead><tr><th>Genre</th><th>Movies</th><th>Total Ratings</th><th>Avg Rating</th><th>Revenue</th></tr></thead>
+                            <tbody>
+                                ${data.map(g => `
+                                    <tr>
+                                        <td>${g.genre_name}</td>
+                                        <td>${g.movie_count}</td>
+                                        <td>${g.total_ratings}</td>
+                                        <td>${Number(g.avg_rating).toFixed(2)}</td>
+                                        <td>$${Number(g.total_revenue || 0).toLocaleString()}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                } else if (tab === 'per-genre') {
+                    const res = await fetch(`${API_BASE}/sql/analytics/top-per-genre?limit=5`);
+                    const data = await res.json();
+                    content.innerHTML = `
+                        <p><span class="badge">View: v_top_movies_per_genre</span> <span class="badge">DENSE_RANK() Window Function</span></p>
+                        <table>
+                            <thead><tr><th>Genre</th><th>Rank</th><th>Movie ID</th><th>Title</th><th>Avg Rating</th><th>Count</th></tr></thead>
+                            <tbody>
+                                ${data.slice(0, 30).map(m => `
+                                    <tr>
+                                        <td>${m.genre_name}</td>
+                                        <td><strong>${m.genre_rank}</strong></td>
+                                        <td>${m.movie_id}</td>
+                                        <td>${m.title}</td>
+                                        <td>⭐ ${Number(m.avg_rating).toFixed(2)}</td>
+                                        <td>${m.rating_count}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                } else if (tab === 'explain') {
+                    const res = await fetch(`${API_BASE}/sql/admin/explain?name=movie_stats`);
+                    const data = await res.json();
+                    content.innerHTML = `
+                        <h3>${data.query_name}</h3>
+                        <p><strong>SQL Query:</strong></p>
+                        <pre class="code-block">${data.sql}</pre>
+                        <p><strong>EXPLAIN ANALYZE Result:</strong></p>
+                        <pre class="code-block">${JSON.stringify(data.explain, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                content.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        }
+
+        async function showNoSQLTab(tab) {
+            document.querySelectorAll('#section-nosql .tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            const content = document.getElementById('nosql-content');
+            content.innerHTML = '<div class="loading">Loading...</div>';
+
+            try {
+                if (tab === 'funnel') {
+                    const res = await fetch(`${API_BASE}/nosql/analytics/funnel?days=30`);
+                    const data = await res.json();
+                    content.innerHTML = `
+                        <p><span class="badge">$match, $group, $project</span> Event type distribution</p>
+                        <table>
+                            <thead><tr><th>Event Type</th><th>Count</th><th>Unique Users</th><th>Unique Movies</th></tr></thead>
+                            <tbody>
+                                ${data.data.map(e => `
+                                    <tr>
+                                        <td>${e.event_type}</td>
+                                        <td><strong>${e.count}</strong></td>
+                                        <td>${e.unique_user_count}</td>
+                                        <td>${e.unique_movie_count}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                } else if (tab === 'trending') {
+                    const res = await fetch(`${API_BASE}/nosql/analytics/trending?days=7&limit=10`);
+                    const data = await res.json();
+                    content.innerHTML = `
+                        <p><span class="badge">$addFields, $exp, $multiply</span> Weighted scoring with exponential time decay</p>
+                        <table>
+                            <thead><tr><th>Movie ID</th><th>Trending Score</th><th>Events</th><th>Unique Users</th></tr></thead>
+                            <tbody>
+                                ${data.data.map(m => `
+                                    <tr>
+                                        <td>${m.movie_id}</td>
+                                        <td><strong style="color: #f6ad55;">🔥 ${m.trending_score}</strong></td>
+                                        <td>${m.total_events}</td>
+                                        <td>${m.unique_user_count}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                } else if (tab === 'conversion') {
+                    const res = await fetch(`${API_BASE}/nosql/analytics/conversion-funnel?days=30`);
+                    const data = await res.json();
+                    content.innerHTML = `
+                        <p><span class="badge">$cond, $in, session-based</span> Conversion funnel analysis</p>
+                        <div class="stats-grid">
+                            <div class="stat-card"><h3>${data.data.total_sessions}</h3><p>Total Sessions</p></div>
+                            <div class="stat-card"><h3>${data.data.search_count}</h3><p>With Search</p></div>
+                            <div class="stat-card"><h3>${data.data.view_count}</h3><p>With View</p></div>
+                            <div class="stat-card"><h3>${data.data.purchase_count}</h3><p>Purchases</p></div>
+                        </div>
+                        <table>
+                            <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+                            <tbody>
+                                <tr><td>Search to View Rate</td><td>${data.data.search_to_view_rate}%</td></tr>
+                                <tr><td>View to Cart Rate</td><td>${data.data.view_to_cart_rate}%</td></tr>
+                                <tr><td>Cart to Purchase Rate</td><td>${data.data.cart_to_purchase_rate}%</td></tr>
+                                <tr><td>Overall Conversion Rate</td><td><strong>${data.data.overall_conversion_rate}%</strong></td></tr>
+                            </tbody>
+                        </table>
+                    `;
+                } else if (tab === 'engagement') {
+                    const res = await fetch(`${API_BASE}/nosql/analytics/user-engagement?days=30&limit=10`);
+                    const data = await res.json();
+                    content.innerHTML = `
+                        <p><span class="badge">$group, $addFields</span> User engagement scoring</p>
+                        <table>
+                            <thead><tr><th>User ID</th><th>Engagement Score</th><th>Total Events</th><th>Page Views</th><th>Searches</th><th>Purchases</th></tr></thead>
+                            <tbody>
+                                ${data.data.map(u => `
+                                    <tr>
+                                        <td>${u.user_id}</td>
+                                        <td><strong style="color: #667eea;">${u.engagement_score}</strong></td>
+                                        <td>${u.total_events}</td>
+                                        <td>${u.page_views}</td>
+                                        <td>${u.searches}</td>
+                                        <td>${u.purchases}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                } else if (tab === 'pipelines') {
+                    const res = await fetch(`${API_BASE}/nosql/admin/pipeline?name=funnel`);
+                    const data = await res.json();
+                    content.innerHTML = `
+                        <h3>${data.name}</h3>
+                        <p>${data.description}</p>
+                        <pre class="code-block">${data.pipeline}</pre>
+                        <p style="margin-top: 20px;"><button class="btn btn-primary" onclick="showNoSQLTab('funnel')">Run This Pipeline</button></p>
+                    `;
+                }
+            } catch (error) {
+                content.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        }
+
+        async function loadDiagnostics() {
+            try {
+                // PostgreSQL indexes
+                const idxRes = await fetch(`${API_BASE}/sql/admin/indexes`);
+                const indexes = await idxRes.json();
+                document.getElementById('indexesList').innerHTML = `
+                    <table>
+                        <thead><tr><th>Table</th><th>Index Name</th><th>Definition</th></tr></thead>
+                        <tbody>
+                            ${indexes.map(idx => `
+                                <tr>
+                                    <td>${idx.tablename}</td>
+                                    <td><code>${idx.indexname}</code></td>
+                                    <td style="font-size: 0.85em;">${idx.indexdef}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+
+                // MongoDB stats
+                const mongoRes = await fetch(`${API_BASE}/nosql/admin/stats`);
+                const stats = await mongoRes.json();
+                const statsHtml = Object.entries(stats).map(([name, data]) => `
+                    <div style="margin-bottom: 20px;">
+                        <h4>${name}</h4>
+                        <p><strong>Documents:</strong> ${data.count}</p>
+                        <p><strong>Indexes:</strong> ${data.indexes.join(', ')}</p>
+                    </div>
+                `).join('');
+                document.getElementById('mongoStats').innerHTML = statsHtml;
+            } catch (error) {
+                console.error('Error loading diagnostics:', error);
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('detailModal').classList.remove('show');
+        }
+
+        // Initialize
+        loadDashboard();
+    </script>
+</body>
+</html>

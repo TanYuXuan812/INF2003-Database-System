@@ -1,0 +1,145 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: moviedb_postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-moviedb}
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admin123}
+    volumes:
+      - ./scripts/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./scripts/views.sql:/docker-entrypoint-initdb.d/02-views.sql
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin} -d ${POSTGRES_DB:-moviedb}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - moviedb_network
+
+  # MongoDB Database
+  mongodb:
+    image: mongo:7
+    container_name: moviedb_mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-admin123}
+      MONGO_INITDB_DATABASE: ${MONGO_DB:-moviedb_mongo}
+    volumes:
+      - ./scripts/mongo_schema.js:/docker-entrypoint-initdb.d/01-schema.js
+      - mongodb_data:/data/db
+    ports:
+      - "27017:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - moviedb_network
+
+  # Flask API Backend
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: moviedb_api
+    environment:
+      # PostgreSQL
+      POSTGRES_DB: ${POSTGRES_DB:-moviedb}
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admin123}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      # MongoDB
+      MONGO_DB: ${MONGO_DB:-moviedb_mongo}
+      MONGO_USER: ${MONGO_USER:-admin}
+      MONGO_PASSWORD: ${MONGO_PASSWORD:-admin123}
+      MONGO_HOST: mongodb
+      MONGO_PORT: 27017
+      MONGO_URL: mongodb://${MONGO_USER:-admin}:${MONGO_PASSWORD:-admin123}@mongodb:27017
+      # Flask
+      FLASK_ENV: ${FLASK_ENV:-production}
+      FLASK_DEBUG: ${FLASK_DEBUG:-0}
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-in-production}
+      # API
+      API_HOST: 0.0.0.0
+      API_PORT: 5000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    ports:
+      - "5000:5000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - moviedb_network
+
+  # Frontend (Nginx serving static files)
+  frontend:
+    image: nginx:alpine
+    container_name: moviedb_frontend
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./frontend/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - moviedb_network
+
+  # Adminer (PostgreSQL Web UI)
+  adminer:
+    image: adminer:latest
+    container_name: moviedb_adminer
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    networks:
+      - moviedb_network
+
+  # Mongo Express (MongoDB Web UI)
+  mongo-express:
+    image: mongo-express:latest
+    container_name: moviedb_mongo_express
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://${MONGO_USER:-admin}:${MONGO_PASSWORD:-admin123}@mongodb:27017/
+      ME_CONFIG_BASICAUTH_USERNAME: ${MONGO_USER:-admin}
+      ME_CONFIG_BASICAUTH_PASSWORD: ${MONGO_PASSWORD:-admin123}
+    ports:
+      - "8081:8081"
+    depends_on:
+      - mongodb
+    networks:
+      - moviedb_network
+
+volumes:
+  postgres_data:
+    driver: local
+  mongodb_data:
+    driver: local
+
+networks:
+  moviedb_network:
+    driver: bridge
