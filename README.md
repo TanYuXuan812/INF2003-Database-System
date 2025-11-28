@@ -78,14 +78,14 @@ createdb moviedb
 psql -d moviedb -f scripts/schema.sql
 
 # Import data (if using import script)
-python import.py
+.\venv314\Scripts\python.exe .\import.py
 ```
 
 #### MongoDB Setup
 ```bash
 # MongoDB will auto-create database on first connection
 # Import data using the import script
-python import.py
+.\venv314\Scripts\python.exe .\load_csv_to_mongo.py
 ```
 
 ### 5. Configure Database Connections
@@ -111,6 +111,10 @@ MONGO_DB = "moviedb"
 ### Start the Flask Server
 ```bash
 .\venv314\Scripts\python.exe .\app.py
+
+OR
+
+run run_app.bat
 ```
 
 The application will be available at: `http://127.0.0.1:5000`
@@ -152,7 +156,7 @@ Database Files/
 
 ### Advanced Search
 The Advanced Search feature provides comprehensive movie discovery with:
-- **Multiple Filters**: Title (partial match), Genre, Actor, Year Range
+- **Multiple Filters**: Title (partial match allowed), Genre, Actor (partial match allowed), Year Range
 - **Dual Sorting**: By Popularity or Rating
 - **Database-Agnostic**: Identical functionality across PostgreSQL and MongoDB
 - **Complete Results**: Shows all movies including those without ratings
@@ -174,7 +178,7 @@ Real-time performance comparison between PostgreSQL and MongoDB:
 - MongoDB: ~800-1200ms (aggregation pipeline)
 - PostgreSQL shows ~10x performance advantage for this relational schema
 
-### Database Switching
+### Database Switching (for admin)
 Toggle between PostgreSQL and MongoDB through the UI:
 - Click database badge in navigation bar
 - Select desired database (PostgreSQL/MongoDB)
