@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+
+{% block title %}Ratings - MongoDB Admin Portal{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1 class="mb-4"><i class="bi bi-star-fill"></i> Movie Ratings (MongoDB)</h1>
+    </div>
+</div>
+
+<!-- Filters and Search Section -->
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title mb-3">
+            <i class="bi bi-funnel"></i> Filters & Search
+        </h5>
+        <form method="get" action="{{ url_for('mongo_list_ratings') }}" id="filterForm">
+            <div class="row g-3">
+                <!-- Rating Range Filter -->
+                <div class="col-md-3">
+                    <label for="rating_filter" class="form-label">Rating Range</label>
+                    <select class="form-select" id="rating_filter" name="rating_filter" onchange="this.form.submit()">
+                        <option value="all" {% if request.args.get('rating_filter', 'all') == 'all' %}selected{% endif %}>All Ratings</option>
+                        <option value="excellent" {% if request.args.get('rating_filter') == 'excellent' %}selected{% endif %}>Excellent (4-5)</option>
+                        <option value="high" {% if request.args.get('rating_filter') == 'high' %}selected{% endif %}>High (3-3.9)</option>
+                        <option value="medium" {% if request.args.get('rating_filter') == 'medium' %}selected{% endif %}>Medium (2-2.9)</option>
+                        <option value="low" {% if request.args.get('rating_filter') == 'low' %}selected{% endif %}>Low (0-1.9)</option>
+                    </select>
+                </div>
+
+                <!-- Sort By -->
+                <div class="col-md-3">
+                    <label for="sort_by" class="form-label">Sort By</label>
+                    <select class="form-select" id="sort_by" name="sort_by" onchange="this.form.submit()">
+                        <option value="created_desc" {% if request.args.get('sort_by', 'created_desc') == 'created_desc' %}selected{% endif %}>Newest First</option>
+                        <option value="created_asc" {% if request.args.get('sort_by') == 'created_asc' %}selected{% endif %}>Oldest First</option>
+                        <option value="rating_desc" {% if request.args.get('sort_by') == 'rating_desc' %}selected{% endif %}>Highest Rating</option>
+                        <option value="rating_asc" {% if request.args.get('sort_by') == 'rating_asc' %}selected{% endif %}>Lowest Rating</option>
+                        <option value="movie_id" {% if request.args.get('sort_by') == 'movie_id' %}selected{% endif %}>Movie ID</option>
+                        <option value="user_id" {% if request.args.get('sort_by') == 'user_id' %}selected{% endif %}>User ID</option>
+                    </select>
+                </div>
+
+                <!-- Search by Movie ID -->
+                <div class="col-md-3">
+                    <label for="movie_id" class="form-label">Movie ID</label>
+                    <input type="number" class="form-control" id="movie_id" name="movie_id"
+                           placeholder="Search by movie..."
+                           value="{{ request.args.get('movie_id', '') }}">
+                </div>
+
+                <!-- Search by User ID -->
+                <div class="col-md-3">
+                    <label for="user_id" class="form-label">User ID</label>
+                    <input type="number" class="form-control" id="user_id" name="user_id"
+                           placeholder="Search by user..."
+                           value="{{ request.args.get('user_id', '') }}">
+                </div>
+            </div>
+
+            <div class="row mt-3">
+                <div class="col">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-search"></i> Apply Filters
+                    </button>
+                    <a href="{{ url_for('mongo_list_ratings') }}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle"></i> Clear Filters
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Active Filters Display -->
+{% set active_filters = [] %}
+{% if request.args.get('rating_filter') and request.args.get('rating_filter') != 'all' %}
+    {% set _ = active_filters.append('Rating: ' + request.args.get('rating_filter')|title) %}
+{% endif %}
+{% if request.args.get('movie_id') %}
+    {% set _ = active_filters.append('Movie ID: ' + request.args.get('movie_id')) %}
+{% endif %}
+{% if request.args.get('user_id') %}
+    {% set _ = active_filters.append('User ID: ' + request.args.get('user_id')) %}
+{% endif %}
+
+{% if active_filters %}
+<div class="alert alert-secondary alert-dismissible fade show mb-3">
+    <strong>Active Filters:</strong> {{ active_filters|join(', ') }}
+    <a href="{{ url_for('mongo_list_ratings') }}" class="btn btn-sm btn-outline-secondary ms-2">
+        Clear All
+    </a>
+</div>
+{% endif %}
+
+<!-- Results Count -->
+<p class="text-muted">
+    <i class="bi bi-list-check"></i> Showing {{ ratings|length }} rating(s)
+    {% if total_filtered and total_filtered > ratings|length %}
+    <span class="text-warning">(limited from {{ total_filtered }} filtered results)</span>
+    {% elif ratings|length != total_ratings %}
+    (filtered from {{ total_ratings }} total)
+    {% endif %}
+</p>
+
+<!-- Ratings Table -->
+<div class="card">
+    <div class="card-body p-0">
+        {% if ratings %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>User ID</th>
+                        <th>Movie ID</th>
+                        <th>Rating</th>
+                        <th>Timestamp</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rating in ratings %}
+                    <tr>
+                        <td>
+                            <span class="badge bg-secondary">User #{{ rating.userId }}</span>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('view_movie', movie_id=rating.movieId) }}"
+                               class="text-decoration-none">
+                                Movie #{{ rating.movieId }}
+                            </a>
+                        </td>
+                        <td>
+                            <span class="badge text-dark rating-badge"
+                                  style="font-size: 1rem;"
+                                  data-rating="{{ rating.rating }}">
+                                <i class="bi bi-star-fill"></i> {{ rating.rating }}/5.0
+                            </span>
+                        </td>
+                        <td>{{ rating.timestamp|default('N/A') }}</td>
+                        <td class="text-end">
+                            <a href="{{ url_for('mongo_view_rating', user_id=rating.userId, movie_id=rating.movieId) }}"
+                               class="btn btn-sm btn-info" title="View">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <a href="{{ url_for('mongo_edit_rating', user_id=rating.userId, movie_id=rating.movieId) }}"
+                               class="btn btn-sm btn-warning" title="Edit">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <button type="button" class="btn btn-sm btn-danger"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#deleteModal{{ rating.userId }}_{{ rating.movieId }}"
+                                    title="Delete">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+
+                    <!-- Delete Modal for each rating -->
+                    <div class="modal fade" id="deleteModal{{ rating.userId }}_{{ rating.movieId }}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Confirm Delete</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    Are you sure you want to delete the rating by User #{{ rating.userId }} for Movie #{{ rating.movieId }}?
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                    <form method="post" action="{{ url_for('mongo_delete_rating', user_id=rating.userId, movie_id=rating.movieId) }}" class="d-inline">
+                                        <button type="submit" class="btn btn-danger">Delete</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-star display-1 text-muted"></i>
+            <p class="lead mt-3">No ratings found</p>
+            {% if active_filters %}
+            <p class="text-muted">Try adjusting your filters or <a href="{{ url_for('mongo_list_ratings') }}">clear all filters</a>.</p>
+            {% else %}
+            <p class="text-muted">Ratings will appear here when users rate movies on your website.</p>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Statistics Card -->
+{% if ratings %}
+<div class="card mt-4">
+    <div class="card-body">
+        <h5 class="card-title"><i class="bi bi-bar-chart"></i> Quick Statistics</h5>
+        <div class="row text-center mt-3">
+            <div class="col-md-3">
+                <h3 class="text-primary">{{ ratings|length }}</h3>
+                <p class="text-muted mb-0">Total Shown</p>
+            </div>
+            <div class="col-md-3">
+                <h3 class="text-success" id="avgRating">-</h3>
+                <p class="text-muted mb-0">Average Rating</p>
+            </div>
+            <div class="col-md-3">
+                <h3 class="text-warning" id="highestRating">-</h3>
+                <p class="text-muted mb-0">Highest Rating</p>
+            </div>
+            <div class="col-md-3">
+                <h3 class="text-danger" id="lowestRating">-</h3>
+                <p class="text-muted mb-0">Lowest Rating</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Color rating badges based on their values (matching filter ranges)
+document.addEventListener('DOMContentLoaded', function() {
+    var badges = document.querySelectorAll('.rating-badge');
+    badges.forEach(function(badge) {
+        var rating = parseFloat(badge.getAttribute('data-rating'));
+        var color;
+
+        if (rating >= 4.0) {
+            color = '#28a745';  // Green - Excellent (4-5)
+        } else if (rating >= 3.0) {
+            color = '#ffc107';  // Yellow - High (3-3.9)
+        } else if (rating >= 2.0) {
+            color = '#fd7e14';  // Orange - Medium (2-2.9)
+        } else {
+            color = '#dc3545';  // Red - Low (0-1.9)
+        }
+
+        badge.style.backgroundColor = color;
+    });
+});
+
+// Calculate and display statistics
+(function() {
+    var ratingElements = document.querySelectorAll('.rating-badge');
+    var ratings = [];
+
+    ratingElements.forEach(function(elem) {
+        var rating = parseFloat(elem.getAttribute('data-rating'));
+        if (!isNaN(rating)) {
+            ratings.push(rating);
+        }
+    });
+
+    if (ratings.length > 0) {
+        // Calculate average
+        var sum = ratings.reduce(function(a, b) { return a + b; }, 0);
+        var avg = (sum / ratings.length).toFixed(2);
+        var avgElem = document.getElementById('avgRating');
+        if (avgElem) avgElem.textContent = avg;
+
+        // Find highest and lowest
+        var highest = Math.max.apply(null, ratings);
+        var lowest = Math.min.apply(null, ratings);
+        var highestElem = document.getElementById('highestRating');
+        var lowestElem = document.getElementById('lowestRating');
+        if (highestElem) highestElem.textContent = highest.toFixed(1);
+        if (lowestElem) lowestElem.textContent = lowest.toFixed(1);
+    }
+})();
+
+// Auto-submit on input change (with debounce)
+var movieInput = document.getElementById('movie_id');
+var userInput = document.getElementById('user_id');
+var timeoutId;
+
+function debounceSubmit() {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(function() {
+        document.getElementById('filterForm').submit();
+    }, 800);
+}
+
+if (movieInput) movieInput.addEventListener('input', debounceSubmit);
+if (userInput) userInput.addEventListener('input', debounceSubmit);
+</script>
+{% endblock %}

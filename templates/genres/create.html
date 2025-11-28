@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Create Genre - Admin Portal{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-6 mx-auto">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="bi bi-plus-circle"></i> Create New Genre</h1>
+            <a href="{{ url_for('list_genres') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back
+            </a>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <form method="post" action="{{ url_for('create_genre') }}">
+                    <div class="mb-3">
+                        <label for="genre_name" class="form-label">
+                            Genre Name <span class="text-danger">*</span>
+                        </label>
+                        <input
+                            type="text"
+                            class="form-control form-control-lg"
+                            id="genre_name"
+                            name="genre_name"
+                            placeholder="e.g., Action, Comedy, Drama"
+                            required
+                            autofocus>
+                        <small class="text-muted">Genre names must be unique</small>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Tip:</strong> Use standard genre names for consistency. Common genres include:
+                        Action, Adventure, Animation, Comedy, Crime, Documentary, Drama, Family, Fantasy,
+                        Horror, Mystery, Romance, Science Fiction, Thriller, War, Western.
+                    </div>
+
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-circle"></i> Create Genre
+                        </button>
+                        <a href="{{ url_for('list_genres') }}" class="btn btn-secondary btn-lg">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Quick Reference Card -->
+        <div class="card mt-3">
+            <div class="card-header bg-light">
+                <h6 class="mb-0"><i class="bi bi-lightbulb"></i> Quick Tips</h6>
+            </div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    <li>Genre names are automatically trimmed of extra whitespace</li>
+                    <li>Duplicate genre names are not allowed</li>
+                    <li>After creating a genre, you can assign it to movies</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

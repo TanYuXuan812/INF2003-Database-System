@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}Genres - Admin Portal{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1 class="mb-4"><i class="bi bi-tags"></i> Genres</h1>
+    </div>
+</div>
+
+<!-- Search Box -->
+<div class="search-box">
+    <form method="get" action="{{ url_for('list_genres') }}">
+        <div class="input-group mb-4">
+            <input type="text" class="form-control" name="search" 
+                   placeholder="Search genres by name..." 
+                   value="{{ search_query }}">
+            <button class="btn btn-primary" type="submit">
+                <i class="bi bi-search"></i> Search
+            </button>
+            {% if search_query %}
+            <a href="{{ url_for('list_genres') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-x"></i> Clear
+            </a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+{% if search_query %}
+    <p class="text-muted">Found {{ genres|length }} genre(s) matching "{{ search_query }}"</p>
+{% endif %}
+
+<div class="mb-3">
+    <a href="{{ url_for('create_genre') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Add New Genre
+    </a>
+</div>
+
+<!-- Genres Grid -->
+<div class="row">
+    {% if genres %}
+        {% for genre in genres %}
+        <div class="col-md-4 col-lg-3 mb-3">
+            <div class="card h-100">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">
+                        <i class="bi bi-tag-fill text-primary"></i>
+                        {{ genre.genre_name }}
+                    </h5>
+                    <div class="mt-auto">
+                        {% if current_db_raw == 'postgres' and genre.genre_id %}
+                        <a href="{{ url_for('view_genre', genre_id=genre.genre_id) }}"
+                           class="btn btn-sm btn-info me-1" title="View">
+                            <i class="bi bi-eye"></i> View
+                        </a>
+                        <a href="{{ url_for('edit_genre', genre_id=genre.genre_id) }}"
+                           class="btn btn-sm btn-warning" title="Edit">
+                            <i class="bi bi-pencil"></i> Edit
+                        </a>
+                        {% elif current_db_raw == 'mongodb' and genre.genre_id and genre.movie_id %}
+                        <a href="{{ url_for('view_mongo_genre', movie_id=genre.movie_id, genre_id=genre.genre_id) }}"
+                           class="btn btn-sm btn-info me-1" title="View">
+                            <i class="bi bi-eye"></i> View
+                        </a>
+                        <a href="{{ url_for('edit_mongo_genre', movie_id=genre.movie_id, genre_id=genre.genre_id) }}"
+                           class="btn btn-sm btn-warning" title="Edit">
+                            <i class="bi bi-pencil"></i> Edit
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="bi bi-tags display-1 text-muted"></i>
+                <p class="lead mt-3">No genres found</p>
+                <a href="{{ url_for('create_genre') }}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Create Your First Genre
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Alternative Table View (commented out, uncomment if preferred) -->
+<!--
+<div class="card">
+    <div class="card-body p-0">
+        {% if genres %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>Genre Name</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for genre in genres %}
+                    <tr>
+                        <td>{{ genre.genre_id }}</td>
+                        <td>
+                            <a href="{{ url_for('view_genre', genre_id=genre.genre_id) }}" 
+                               class="text-decoration-none fw-semibold">
+                                <i class="bi bi-tag-fill text-primary"></i> {{ genre.genre_name }}
+                            </a>
+                        </td>
+                        <td class="text-end">
+                            <a href="{{ url_for('view_genre', genre_id=genre.genre_id) }}" 
+                               class="btn btn-sm btn-info" title="View">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <a href="{{ url_for('edit_genre', genre_id=genre.genre_id) }}" 
+                               class="btn btn-sm btn-warning" title="Edit">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+</div>
+-->
+{% endblock %}

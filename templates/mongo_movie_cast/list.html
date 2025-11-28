@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block title %}Movie Cast - MongoDB Admin Portal{% endblock %}
+
+{% block content %}
+<div class="container-xl">
+<style>
+    /* Harmonize spacing and alignment across the table */
+    .cast-table th,
+    .cast-table td {
+        vertical-align: middle;
+        padding: 0.65rem 0.85rem; /*tighter rows to remove excess height*/
+        line-height: 1.2;
+    }
+    .cast-table td .badge {
+        font-weight: 600;
+    }
+    /* Centered search layout */
+    .search-wrapper {
+        max-width: 760px;
+        margin: 0 auto 1.5rem;
+    }
+    .search-wrapper .input-group > .form-control,
+    .search-wrapper .input-group > .btn {
+        height: 52px;
+        font-size: 1rem;
+        padding: 0.9rem 1rem;
+    }
+    .search-wrapper .input-group > .btn {
+        padding: 0 1.4rem;
+    }
+    /* Ensure consistent card padding and table spacing */
+    .cast-table-card .card-body {
+        padding: 1.5rem;
+    }
+    .cast-table-card .table-responsive {
+        margin: 0;
+        padding: 0;
+    }
+    .cast-table {
+        margin-bottom: 0;
+        table-layout: fixed;
+        width: 100%;
+    }
+    /* Fixed column widths to prevent shifting */
+    .cast-table th:nth-child(1),
+    .cast-table td:nth-child(1) {
+        width: 20%;
+    }
+    .cast-table th:nth-child(2),
+    .cast-table td:nth-child(2) {
+        width: 20%;
+    }
+    .cast-table th:nth-child(3),
+    .cast-table td:nth-child(3) {
+        width: 25%;
+        white-space: normal;
+        word-wrap: break-word;
+    }
+    .cast-table th:nth-child(4),
+    .cast-table td:nth-child(4) {
+        width: 15%;
+    }
+    .cast-table th:nth-child(5),
+    .cast-table td:nth-child(5) {
+        width: 20%;
+    }
+    /* Keep badge styling consistent */
+    .cast-table .badge {
+        display: inline-block;
+        max-width: 100%;
+        word-wrap: break-word;
+        white-space: normal;
+    }
+</style>
+
+<div class="row mb-4">
+    <div class="col">
+        <h1 class="mb-4"><i class="bi bi-person-video"></i> Movie Cast</h1>
+    </div>
+</div>
+
+<div class="search-wrapper">
+    <form method="get" action="{{ url_for('mongo_list_cast') }}">
+        <div class="input-group mb-2">
+            <input type="text" class="form-control" name="search"
+                   placeholder="Search by movie title or person name..."
+                   value="{{ search_query }}">
+            <button class="btn btn-primary" type="submit">
+                <i class="bi bi-search"></i> Search
+            </button>
+            {% if search_query %}
+            <a href="{{ url_for('mongo_list_cast') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-x"></i> Clear
+            </a>
+            {% endif %}
+        </div>
+    </form>
+    <div class="text-muted text-center mb-4" style="min-height: 24px;">
+        {% if search_query %}
+            Found {{ casts|length }} cast entr{{ 'y' if casts|length == 1 else 'ies' }} matching "{{ search_query }}"
+        {% else %}
+            &nbsp;
+        {% endif %}
+    </div>
+</div>
+
+<div class="mb-3">
+    <a href="{{ url_for('mongo_create_cast') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Add New Cast Entry
+    </a>
+</div>
+
+<div class="card shadow-sm cast-table-card">
+    <div class="card-body">
+        {% if casts %}
+        <div class="table-responsive">
+            <table class="table table-hover cast-table">
+                <thead class="table-light">
+                    <tr>
+                        <th>Movie</th>
+                        <th>Person</th>
+                        <th>Character</th>
+                        <th class="text-center">Cast Order</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cast in casts %}
+                    <tr>
+                        <td class="align-middle">
+                            <a href="{{ url_for('view_movie', movie_id=cast.movie_id) }}" class="text-decoration-none">
+                                <i class="bi bi-film"></i> {{ cast.movie_title }}
+                            </a>
+                        </td>
+                        <td class="align-middle text-nowrap">
+                            <i class="bi bi-person-circle"></i> {{ cast.person_name }}
+                        </td>
+                        <td class="align-middle">
+                            {% if cast.character %}
+                                <span class="badge bg-info">{{ cast.character }}</span>
+                            {% else %}
+                                <span class="text-muted"></span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center align-middle">
+                            {% if cast.order is defined and cast.order is not none %}
+                                <span class="badge bg-secondary">{{ cast.order }}</span>
+                            {% else %}
+                                <span class="text-muted"></span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end align-middle">
+                            <div class="d-flex justify-content-end align-items-center gap-2 flex-nowrap">
+                                <a href="{{ url_for('mongo_view_cast', movie_id=cast.movie_id, person_id=cast.id) }}"
+                                   class="btn btn-sm btn-info" title="View">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{{ url_for('mongo_edit_cast', movie_id=cast.movie_id, person_id=cast.id) }}"
+                                   class="btn btn-sm btn-warning" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-person-video display-1 text-muted"></i>
+            <p class="lead mt-3">No cast entries found</p>
+            <a href="{{ url_for('mongo_create_cast') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Create Your First Cast Entry
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+</div>
+{% endblock %}

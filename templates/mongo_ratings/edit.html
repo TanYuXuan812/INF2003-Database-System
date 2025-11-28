@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Rating - MongoDB Admin Portal{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-6 mx-auto">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="bi bi-pencil"></i> Edit Rating</h1>
+            <a href="{{ url_for('mongo_view_rating', user_id=rating.userId, movie_id=rating.movieId) }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back
+            </a>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <form method="post" action="{{ url_for('mongo_edit_rating', user_id=rating.userId, movie_id=rating.movieId) }}">
+                    <div class="mb-3">
+                        <label for="user_id" class="form-label">User ID</label>
+                        <input
+                            type="number"
+                            class="form-control"
+                            id="user_id"
+                            value="{{ rating.userId }}"
+                            disabled>
+                        <small class="text-muted">User ID cannot be changed</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="movie_id" class="form-label">Movie ID</label>
+                        <input
+                            type="number"
+                            class="form-control"
+                            id="movie_id"
+                            value="{{ rating.movieId }}"
+                            disabled>
+                        <small class="text-muted">Movie ID cannot be changed</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="rating" class="form-label">
+                            Rating <span class="text-danger">*</span>
+                        </label>
+                        <div class="input-group">
+                            <input
+                                type="number"
+                                class="form-control form-control-lg"
+                                id="rating"
+                                name="rating"
+                                value="{{ rating.rating }}"
+                                step="0.1"
+                                min="0"
+                                max="5"
+                                required
+                                autofocus>
+                            <span class="input-group-text">/ 5</span>
+                        </div>
+                        <small class="text-muted">Rating must be between 0 and 5</small>
+
+                        <!-- Rating Slider -->
+                        <input
+                            type="range"
+                            class="form-range mt-2"
+                            min="0"
+                            max="5"
+                            step="0.5"
+                            id="ratingSlider"
+                            value="{{ rating.rating }}"
+                            oninput="document.getElementById('rating').value = this.value">
+                    </div>
+
+                    <!-- Star Preview -->
+                    <div class="mb-3">
+                        <label class="form-label">Preview</label>
+                        <div id="starPreview" class="fs-3">
+                            <span class="text-warning">☆☆☆☆☆</span>
+                        </div>
+                    </div>
+
+                    <!-- Timestamps -->
+                    <div class="mb-3">
+                        <div class="row">
+                            {% if rating.created_at %}
+                            <div class="col-6">
+                                <label class="form-label">Created</label>
+                                <p class="text-muted">{{ rating.created_at }}</p>
+                            </div>
+                            {% endif %}
+                            {% if rating.updated_at %}
+                            <div class="col-6">
+                                <label class="form-label">Last Updated</label>
+                                <p class="text-muted">{{ rating.updated_at }}</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <strong>Note:</strong> Only the rating value can be updated. User and movie cannot be changed.
+                    </div>
+
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-circle"></i> Update Rating
+                        </button>
+                        <a href="{{ url_for('mongo_view_rating', user_id=rating.userId, movie_id=rating.movieId) }}" class="btn btn-secondary btn-lg">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Update star preview based on rating input
+const ratingInput = document.getElementById('rating');
+const ratingSlider = document.getElementById('ratingSlider');
+const starPreview = document.getElementById('starPreview');
+
+function updateStarPreview() {
+    const rating = parseFloat(ratingInput.value) || 0;
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = (rating % 1) >= 0.5;
+    const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
+
+    // Full stars (★)
+    let stars = '★'.repeat(fullStars);
+    // Half star (⯨)
+    if (hasHalfStar) stars += '⯨';
+    // Empty stars (☆)
+    stars += '☆'.repeat(emptyStars);
+
+    starPreview.innerHTML = `<span class="text-warning">${stars}</span> <span class="text-muted">(${rating}/5.0)</span>`;
+}
+
+ratingInput.addEventListener('input', function() {
+    ratingSlider.value = this.value;
+    updateStarPreview();
+});
+
+ratingSlider.addEventListener('input', function() {
+    ratingInput.value = this.value;
+    updateStarPreview();
+});
+
+// Initial preview
+updateStarPreview();
+</script>
+{% endblock %}

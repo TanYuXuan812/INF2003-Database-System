@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+
+{% block title %}Add Company to Movie{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="bi bi-building-add"></i> Add Company to Movie</h1>
+                <a href="{{ url_for('list_movie_companies') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back
+                </a>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('create_movie_company') }}">
+                        <!-- Movie Selection -->
+                        <div class="mb-3">
+                            <label for="movie_search_input" class="form-label">
+                                <i class="bi bi-film"></i> Search Movie <span class="text-danger">*</span>
+                            </label>
+                            <div class="position-relative">
+                                <input type="text"
+                                       class="form-control form-control-lg"
+                                       id="movie_search_input"
+                                       name="movie_query"
+                                       placeholder="Start typing the movie name..."
+                                       autocomplete="off">
+                                <input type="hidden" id="movie_id" name="movie_id">
+                                <div class="form-text text-muted" id="movieSearchFeedback">
+                                    Begin typing to find a movie, then select it from the results list.
+                                </div>
+                                <div id="movieSearchResults"
+                                     class="list-group position-absolute w-100 shadow-sm mt-1"
+                                     style="z-index: 25; display: none; max-height: 320px; overflow-y: auto;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Company Selection -->
+                        <div class="mb-3">
+                            <label for="company_id" class="form-label">
+                                <i class="bi bi-building"></i> Select Company <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select form-select-lg" id="company_id" name="company_id" required>
+                                <option value="">-- Choose a company --</option>
+                                {% for company in companies %}
+                                <option value="{{ company.company_id }}">
+                                    {{ company.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted">Select the production company to associate with this movie.</small>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i>
+                            <strong>Note:</strong> If this movie-company combination already exists, you'll be notified.
+                        </div>
+
+                        <div class="d-flex gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-check-circle"></i> Add Company to Movie
+                            </button>
+                            <a href="{{ url_for('list_movie_companies') }}" class="btn btn-secondary btn-lg">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Quick Links Card -->
+            <div class="card mt-4">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="bi bi-lightbulb"></i> Quick Actions</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex gap-2 flex-wrap">
+                        <a href="{{ url_for('create_movie') }}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-plus"></i> New Movie
+                        </a>
+                        <a href="{{ url_for('create_company') }}" class="btn btn-sm btn-outline-success">
+                            <i class="bi bi-plus"></i> New Company
+                        </a>
+                        <a href="{{ url_for('list_movies') }}" class="btn btn-sm btn-outline-info">
+                            <i class="bi bi-list"></i> Browse Movies
+                        </a>
+                        <a href="{{ url_for('list_companies') }}" class="btn btn-sm btn-outline-warning">
+                            <i class="bi bi-list"></i> Browse Companies
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    const searchInput = document.getElementById('movie_search_input');
+    const movieIdInput = document.getElementById('movie_id');
+    const resultsContainer = document.getElementById('movieSearchResults');
+    const feedback = document.getElementById('movieSearchFeedback');
+    const searchEndpoint = "{{ url_for('search_movies_api') }}";
+    const MIN_QUERY_LENGTH = 2;
+    let debounceTimer = null;
+    let activeFetchToken = 0;
+
+    function setFeedback(message, state) {
+        feedback.textContent = message;
+        feedback.classList.remove('text-muted', 'text-success', 'text-danger');
+        if (state === 'success') {
+            feedback.classList.add('text-success');
+        } else if (state === 'error') {
+            feedback.classList.add('text-danger');
+        } else {
+            feedback.classList.add('text-muted');
+        }
+    }
+
+    function clearResults() {
+        resultsContainer.innerHTML = '';
+        resultsContainer.style.display = 'none';
+    }
+
+    function showNoResults(query) {
+        resultsContainer.innerHTML = '';
+        const empty = document.createElement('div');
+        empty.className = 'list-group-item text-muted';
+        empty.textContent = `No movies found for "${query}"`;
+        resultsContainer.appendChild(empty);
+        resultsContainer.style.display = 'block';
+    }
+
+    function handleResults(results, query) {
+        resultsContainer.innerHTML = '';
+        if (!results.length) {
+            showNoResults(query);
+            return;
+        }
+
+        results.forEach(movie => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'list-group-item list-group-item-action';
+            const year = movie.released_date ? movie.released_date.slice(0, 4) : null;
+            const label = year ? `${movie.title} (${year})` : movie.title;
+            button.dataset.movieId = movie.movie_id;
+            button.dataset.movieLabel = label;
+            button.textContent = `${label} - ID: ${movie.movie_id}`;
+            button.addEventListener('click', () => {
+                movieIdInput.value = movie.movie_id;
+                searchInput.value = label;
+                setFeedback(`Selected "${label}" (ID: ${movie.movie_id}).`, 'success');
+                clearResults();
+            });
+            resultsContainer.appendChild(button);
+        });
+        resultsContainer.style.display = 'block';
+    }
+
+    function fetchResults(query) {
+        const fetchToken = ++activeFetchToken;
+        fetch(`${searchEndpoint}?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (fetchToken !== activeFetchToken) {
+                    return;
+                }
+                const results = data && Array.isArray(data.movies) ? data.movies : [];
+                handleResults(results, query);
+            })
+            .catch(() => {
+                if (fetchToken !== activeFetchToken) {
+                    return;
+                }
+                clearResults();
+                setFeedback('Unable to search movies right now. Please try again.', 'error');
+            });
+    }
+
+    searchInput.addEventListener('input', () => {
+        const query = searchInput.value.trim();
+        movieIdInput.value = '';
+        setFeedback('Select a movie from the results to lock it in.', null);
+
+        if (!query.length) {
+            clearResults();
+            setFeedback('Begin typing to find a movie, then select it from the results list.', null);
+            return;
+        }
+
+        if (query.length < MIN_QUERY_LENGTH) {
+            clearResults();
+            return;
+        }
+
+        if (debounceTimer) {
+            clearTimeout(debounceTimer);
+        }
+
+        debounceTimer = setTimeout(() => fetchResults(query), 250);
+    });
+
+    document.addEventListener('click', event => {
+        if (!resultsContainer.contains(event.target) && event.target !== searchInput) {
+            clearResults();
+        }
+    });
+})();
+</script>
+{% endblock %}

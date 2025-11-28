@@ -1,0 +1,265 @@
+<!-- templates/movie_companies/list.html -->
+{% extends "base.html" %}
+
+{% block title %}Movie Companies - Admin Portal{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1 class="mb-4">
+            <i class="bi bi-building"></i> Movie-Company Associations
+        </h1>
+    </div>
+</div>
+
+<!-- Filter Options -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" action="{{ url_for('list_movie_companies') }}" class="row g-3">
+            <div class="col-md-5">
+                <label for="movie_id" class="form-label">Filter by Movie ID</label>
+                <input type="number" class="form-control" id="movie_id" name="movie_id"
+                       value="{{ request.args.get('movie_id', '') }}"
+                       placeholder="Enter movie ID">
+            </div>
+            <div class="col-md-5">
+                <label for="company_id" class="form-label">Filter by Company ID</label>
+                <input type="number" class="form-control" id="company_id" name="company_id"
+                       value="{{ request.args.get('company_id', '') }}"
+                       placeholder="Enter company ID">
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-funnel"></i> Filter
+                </button>
+            </div>
+        </form>
+        {% if request.args.get('movie_id') or request.args.get('company_id') %}
+        <div class="mt-3">
+            <a href="{{ url_for('list_movie_companies') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-x"></i> Clear Filters
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Summary Card -->
+{% if request.args.get('movie_id') and movie_info %}
+<div class="card mb-4 border-primary">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">
+            <i class="bi bi-film"></i> Movie: {{ movie_info.title }}
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <p class="mb-1"><strong>Movie ID:</strong> {{ movie_info.movie_id }}</p>
+                <p class="mb-1"><strong>Release Date:</strong> {{ movie_info.released_date|format_date }}</p>
+            </div>
+            <div class="col-md-6">
+                <p class="mb-1"><strong>Total Companies:</strong> <span class="badge bg-primary">{{ movie_companies|length }}</span></p>
+                <a href="{{ url_for('view_movie', movie_id=movie_info.movie_id) }}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-eye"></i> View Movie Details
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% elif request.args.get('company_id') and company_info %}
+<div class="card mb-4 border-success">
+    <div class="card-header bg-success text-white">
+        <h5 class="mb-0">
+            <i class="bi bi-building"></i> Company: {{ company_info.name }}
+        </h5>
+    </div>
+    <div class="card-body">
+        <p class="mb-1"><strong>Company ID:</strong> {{ company_info.company_id }}</p>
+        <a href="{{ url_for('view_company', company_id=company_info.company_id) }}" class="btn btn-sm btn-outline-success">
+            <i class="bi bi-eye"></i> View Company Details
+        </a>
+    </div>
+</div>
+{% endif %}
+
+<!-- Add New Association Button -->
+<div class="mb-3">
+    <a href="{{ url_for('create_movie_company') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Add Company to Movie
+    </a>
+</div>
+
+<!-- Associations Table -->
+<div class="card">
+    <div class="card-body p-0">
+        {% if movie_companies %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Movie ID</th>
+                        <th>Movie Title</th>
+                        <th>Company ID</th>
+                        <th>Company Name</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for mc in movie_companies %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('view_movie', movie_id=mc.movie_id) }}"
+                               class="text-decoration-none">
+                                {{ mc.movie_id }}
+                            </a>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('view_movie', movie_id=mc.movie_id) }}"
+                               class="text-decoration-none fw-semibold">
+                                {{ mc.movie_title or 'Unknown Movie' }}
+                            </a>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('view_company', company_id=mc.company_id) }}"
+                               class="text-decoration-none">
+                                {{ mc.company_id }}
+                            </a>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('view_company', company_id=mc.company_id) }}"
+                               class="text-decoration-none">
+                                <i class="bi bi-building text-primary"></i>
+                                {{ mc.company_name or 'Unknown Company' }}
+                            </a>
+                        </td>
+                        <td class="text-end">
+                            <a href="{{ url_for('view_movie_company', movie_id=mc.movie_id, company_id=mc.company_id) }}"
+                               class="btn btn-sm btn-info" title="View">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <button type="button" class="btn btn-sm btn-danger"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#deleteCompanyModal"
+                                    data-movie-id="{{ mc.movie_id }}"
+                                    data-company-id="{{ mc.company_id }}"
+                                    data-movie-title="{{ (mc.movie_title or 'Unknown Movie')|e }}"
+                                    data-company-name="{{ (mc.company_name or 'Unknown Company')|e }}"
+                                    data-delete-url="{{ url_for('delete_movie_company', movie_id=mc.movie_id, company_id=mc.company_id) }}"
+                                    title="Remove">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if movie_companies|length >= 100 %}
+        <div class="card-footer text-muted">
+            <i class="bi bi-info-circle"></i> Showing first 100 results. Use filters to narrow down.
+        </div>
+        {% endif %}
+
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-buildings display-1 text-muted"></i>
+            <p class="lead mt-3">
+                {% if request.args.get('movie_id') or request.args.get('company_id') %}
+                    No associations found matching your filters
+                {% else %}
+                    No movie-company associations found
+                {% endif %}
+            </p>
+            <a href="{{ url_for('create_movie_company') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Add First Association
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Quick Stats Card -->
+{% if not request.args.get('movie_id') and not request.args.get('company_id') %}
+<div class="card mt-4">
+    <div class="card-header bg-light">
+        <h6 class="mb-0"><i class="bi bi-bar-chart"></i> Quick Stats</h6>
+    </div>
+    <div class="card-body">
+        <div class="row text-center">
+            <div class="col-md-4">
+                <h3 class="text-primary">{{ movie_companies|length }}</h3>
+                <p class="text-muted mb-0">Total Associations</p>
+            </div>
+            <div class="col-md-4">
+                <h3 class="text-success">{{ unique_movies|length if unique_movies else 0 }}</h3>
+                <p class="text-muted mb-0">Movies with Companies</p>
+            </div>
+            <div class="col-md-4">
+                <h3 class="text-info">{{ unique_companies|length if unique_companies else 0 }}</h3>
+                <p class="text-muted mb-0">Companies Used</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Shared Delete Modal -->
+<div class="modal fade" id="deleteCompanyModal" tabindex="-1" aria-labelledby="deleteCompanyLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteCompanyLabel">Confirm Removal</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Remove company <strong data-role="company-name">this company</strong> from movie <strong data-role="movie-title">this movie</strong>?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" action="" id="deleteCompanyForm" class="d-inline">
+                    <button type="submit" class="btn btn-danger">Remove</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const deleteModal = document.getElementById('deleteCompanyModal');
+    if (!deleteModal) {
+        return;
+    }
+
+    const formEl = document.getElementById('deleteCompanyForm');
+    const companyNameEl = deleteModal.querySelector('[data-role="company-name"]');
+    const movieTitleEl = deleteModal.querySelector('[data-role="movie-title"]');
+
+    deleteModal.addEventListener('show.bs.modal', function(event) {
+        const trigger = event.relatedTarget;
+        if (!trigger) {
+            return;
+        }
+
+        const movieTitle = trigger.getAttribute('data-movie-title') || '';
+        const companyName = trigger.getAttribute('data-company-name') || '';
+        const deleteUrl = trigger.getAttribute('data-delete-url');
+
+        if (movieTitleEl) {
+            movieTitleEl.textContent = movieTitle;
+        }
+        if (companyNameEl) {
+            companyNameEl.textContent = companyName;
+        }
+        if (formEl && deleteUrl) {
+            formEl.action = deleteUrl;
+        }
+    });
+});
+</script>
+{% endblock %}

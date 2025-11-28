@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block title %}Create Crew Entry - MongoDB Admin Portal{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="bi bi-plus-circle"></i> Create New Crew Entry</h1>
+            <a href="{{ url_for('mongo_list_crew') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to List
+            </a>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <form method="post" action="{{ url_for('mongo_create_crew') }}" id="crewForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="movie_search" class="form-label">
+                                Movie <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control form-control-lg" id="movie_search"
+                                   placeholder="Search for a movie..." autocomplete="off">
+                            <input type="hidden" id="movie_id" name="movie_id">
+                            <div id="movie_results" class="list-group position-absolute" style="z-index: 1000; max-height: 300px; overflow-y: auto; display: none;"></div>
+                            <small class="text-muted">Type to search for movies</small>
+                            <div id="movie_selected" class="mt-2" style="display: none;">
+                                <div class="alert alert-success py-2">
+                                    <i class="bi bi-check-circle"></i> Selected: <strong id="movie_name"></strong>
+                                    <button type="button" class="btn btn-sm btn-outline-danger float-end" onclick="clearMovie()">
+                                        <i class="bi bi-x"></i> Clear
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="person_id" class="form-label">
+                                Person ID <span class="text-danger">*</span>
+                            </label>
+                            <input type="number" class="form-control form-control-lg" id="person_id" name="person_id"
+                                   placeholder="Enter person ID" required>
+                            <small class="text-muted">The unique identifier for the person</small>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="name" class="form-label">
+                            Person Name <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" class="form-control" id="name" name="name"
+                               placeholder="e.g., Steven Spielberg, Christopher Nolan" required>
+                        <small class="text-muted">The person's full name</small>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="job" class="form-label">
+                                Job <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="job" name="job"
+                                   placeholder="e.g., Director, Producer, Writer" required>
+                            <small class="text-muted">The specific job/role for this person</small>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="department" class="form-label">Department</label>
+                            <select class="form-select" id="department" name="department">
+                                <option value="">Select a department...</option>
+                                <option value="Directing">Directing</option>
+                                <option value="Production">Production</option>
+                                <option value="Writing">Writing</option>
+                                <option value="Camera">Camera</option>
+                                <option value="Editing">Editing</option>
+                                <option value="Sound">Sound</option>
+                                <option value="Art">Art</option>
+                                <option value="Visual Effects">Visual Effects</option>
+                                <option value="Lighting">Lighting</option>
+                                <option value="Crew">Crew</option>
+                                <option value="Costume & Make-Up">Costume & Make-Up</option>
+                            </select>
+                            <small class="text-muted">The department this job belongs to</small>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="credit_id" class="form-label">Credit ID</label>
+                        <input type="text" class="form-control" id="credit_id" name="credit_id"
+                               placeholder="Optional external credit ID">
+                        <small class="text-muted">TMDb or other database credit identifier</small>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Note:</strong> A person can have multiple crew entries per movie with different jobs (e.g., Director and Producer). The combination of Person ID and Job must be unique for each movie.
+                    </div>
+
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                            <i class="bi bi-check-circle"></i> Create Crew Entry
+                        </button>
+                        <a href="{{ url_for('mongo_list_crew') }}" class="btn btn-secondary btn-lg">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-body">
+                <h6 class="card-title"><i class="bi bi-lightbulb"></i> Quick Tips</h6>
+                <ul class="mb-0">
+                    <li>Type at least 2 characters to search for movies</li>
+                    <li>Job field is required and describes the specific role (Director, Producer, etc.)</li>
+                    <li>Department categorizes the job into broader areas</li>
+                    <li>Same person can have multiple jobs for the same movie</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+let movieSearchTimeout;
+
+// Movie search functionality
+document.getElementById('movie_search').addEventListener('input', function(e) {
+    const query = e.target.value.trim();
+
+    clearTimeout(movieSearchTimeout);
+
+    if (query.length < 2) {
+        document.getElementById('movie_results').style.display = 'none';
+        return;
+    }
+
+    movieSearchTimeout = setTimeout(() => {
+        fetch(`{{ url_for('search_mongo_movies_api') }}?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                const resultsDiv = document.getElementById('movie_results');
+                resultsDiv.innerHTML = '';
+
+                if (data.movies && data.movies.length > 0) {
+                    data.movies.forEach(movie => {
+                        const item = document.createElement('a');
+                        item.href = '#';
+                        item.className = 'list-group-item list-group-item-action';
+                        item.innerHTML = `
+                            <strong>${movie.title}</strong>
+                            ${movie.released_date ? `<br><small class="text-muted">Released: ${movie.released_date}</small>` : ''}
+                            <small class="text-muted float-end">ID: ${movie.movie_id}</small>
+                        `;
+                        item.onclick = (event) => {
+                            event.preventDefault();
+                            selectMovie(movie.movie_id, movie.title);
+                        };
+                        resultsDiv.appendChild(item);
+                    });
+                    resultsDiv.style.display = 'block';
+                } else {
+                    resultsDiv.innerHTML = '<div class="list-group-item">No movies found</div>';
+                    resultsDiv.style.display = 'block';
+                }
+            })
+            .catch(error => {
+                console.error('Error searching movies:', error);
+            });
+    }, 300);
+});
+
+function selectMovie(id, title) {
+    document.getElementById('movie_id').value = id;
+    document.getElementById('movie_search').value = '';
+    document.getElementById('movie_name').textContent = title;
+    document.getElementById('movie_selected').style.display = 'block';
+    document.getElementById('movie_results').style.display = 'none';
+}
+
+function clearMovie() {
+    document.getElementById('movie_id').value = '';
+    document.getElementById('movie_search').value = '';
+    document.getElementById('movie_selected').style.display = 'none';
+}
+
+// Hide results when clicking outside
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('#movie_search') && !e.target.closest('#movie_results')) {
+        document.getElementById('movie_results').style.display = 'none';
+    }
+});
+
+// Form validation
+document.getElementById('crewForm').addEventListener('submit', function(e) {
+    const movieId = document.getElementById('movie_id').value;
+
+    if (!movieId) {
+        e.preventDefault();
+        alert('Please select a movie');
+        return false;
+    }
+});
+</script>
+{% endblock %}
+{% endblock %}

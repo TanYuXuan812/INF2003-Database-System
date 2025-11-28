@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Movie Cast - Admin Portal{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1 class="mb-4"><i class="bi bi-person-video"></i> Movie Cast</h1>
+    </div>
+</div>
+
+<div class="search-box">
+    <form method="get" action="{{ url_for('list_movie_casts') }}">
+        <div class="input-group mb-4">
+            <input type="text" class="form-control" name="search"
+                   placeholder="Search by movie title or person name..."
+                   value="{{ search_query }}">
+            <button class="btn btn-primary" type="submit">
+                <i class="bi bi-search"></i> Search
+            </button>
+            {% if search_query %}
+            <a href="{{ url_for('list_movie_casts') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-x"></i> Clear
+            </a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+{% if search_query %}
+    <p class="text-muted">Found {{ casts|length }} cast entr{{ 'y' if casts|length == 1 else 'ies' }} matching "{{ search_query }}"</p>
+{% endif %}
+
+<div class="mb-3">
+    <a href="{{ url_for('create_movie_cast') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Add New Cast Entry
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if casts %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Movie</th>
+                        <th>Person</th>
+                        <th>Character</th>
+                        <th class="text-center">Cast Order</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cast in casts %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('view_movie', movie_id=cast.movie_id) }}" class="text-decoration-none">
+                                <i class="bi bi-film"></i> {{ cast.movie_title }}
+                            </a>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('view_person', person_id=cast.person_id) }}" class="text-decoration-none">
+                                <i class="bi bi-person-circle"></i> {{ cast.person_name }}
+                            </a>
+                        </td>
+                        <td>
+                            {% if cast.character %}
+                                <span class="badge bg-info">{{ cast.character }}</span>
+                            {% else %}
+                                <span class="text-muted"></span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if cast.cast_order is not none %}
+                                <span class="badge bg-secondary">{{ cast.cast_order }}</span>
+                            {% else %}
+                                <span class="text-muted"></span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <a href="{{ url_for('view_movie_cast', movie_id=cast.movie_id, person_id=cast.person_id) }}"
+                               class="btn btn-sm btn-info me-1" title="View">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <a href="{{ url_for('edit_movie_cast', movie_id=cast.movie_id, person_id=cast.person_id) }}"
+                               class="btn btn-sm btn-warning" title="Edit">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-person-video display-1 text-muted"></i>
+            <p class="lead mt-3">No cast entries found</p>
+            <a href="{{ url_for('create_movie_cast') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Create Your First Cast Entry
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

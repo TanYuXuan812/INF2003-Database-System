@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+
+{% block title %}Genres - User Portal{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <a href="{{ url_for('user_home') }}" class="btn btn-outline-secondary mb-2">
+            <i class="bi bi-arrow-left"></i> Back to Home
+        </a>
+        <h1 class="mb-4"><i class="bi bi-tags"></i> Genres</h1>
+    </div>
+</div>
+
+{% if not genre %}
+<!-- Search Box for Genres -->
+<div class="search-box">
+    <form method="get" action="{{ url_for('user_genres') }}">
+        <div class="input-group mb-4">
+            <input type="text" class="form-control" name="search"
+                   placeholder="Search genres by name..."
+                   value="{{ search_query }}">
+            <button class="btn btn-primary" type="submit">
+                <i class="bi bi-search"></i> Search
+            </button>
+            {% if search_query %}
+            <a href="{{ url_for('user_genres') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-x"></i> Clear
+            </a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+{% if search_query %}
+    <p class="text-muted">Found {{ genres|length }} genre(s) matching "{{ search_query }}"</p>
+{% endif %}
+{% endif %}
+
+{% if genre %}
+<!-- Single Genre View -->
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="h3 mb-0">
+                <i class="bi bi-tag-fill text-primary"></i> {{ genre.genre_name }}
+            </h2>
+            <a href="{{ url_for('user_genres') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to genres
+            </a>
+        </div>
+
+        <!-- Search Movies in This Genre -->
+        <div class="search-box mb-4">
+            <div class="input-group">
+                <input type="text" class="form-control" id="movieSearchInput"
+                       placeholder="Search for movies by title in {{ genre.genre_name }}..."
+                       autocomplete="off">
+                <button class="btn btn-outline-secondary" id="clearSearchBtn" style="display: none;">
+                    <i class="bi bi-x"></i> Clear
+                </button>
+            </div>
+        </div>
+
+        <!-- Genre Details Card -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Genre Details</h5>
+
+                <table class="table table-sm">
+                    <tr>
+                        <th style="width: 150px;">Genre ID:</th>
+                        <td>{{ genre.genre_id }}</td>
+                    </tr>
+                    <tr>
+                        <th>Genre Name:</th>
+                        <td><strong>{{ genre.genre_name }}</strong></td>
+                    </tr>
+                    <tr>
+                        <th>Movie Count:</th>
+                        <td>
+                            <span class="badge bg-primary">{{ movie_count }} movies</span>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- Sample Movies Card -->
+        <div class="card mb-3" id="moviesCard">
+            <div class="card-header">
+                <h5 class="mb-0" id="moviesHeader">
+                    <i class="bi bi-film"></i>
+                    Movies with this Genre
+                    <small class="text-muted" id="moviesCount">(showing {{ movies|length }} of {{ movie_count }})</small>
+                </h5>
+            </div>
+            <div class="card-body p-0" id="moviesTableContainer">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Title</th>
+                                <th>Release Date</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="moviesTableBody">
+                            {% for movie in movies %}
+                            <tr>
+                                <td>{{ movie.movie_id }}</td>
+                                <td>
+                                    <a href="{{ url_for('user_view_movie', movie_id=movie.movie_id) }}"
+                                       class="text-decoration-none">
+                                        {{ movie.title }}
+                                    </a>
+                                </td>
+                                <td>{{ movie.released_date|format_date }}</td>
+                                <td class="text-end">
+                                    <a href="{{ url_for('user_view_movie', movie_id=movie.movie_id) }}"
+                                       class="btn btn-sm btn-info" title="View Movie">
+                                        <i class="bi bi-eye"></i> View
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<!-- Genres Grid -->
+<div class="row">
+    {% if genres %}
+        {% for genre in genres %}
+        <div class="col-md-4 col-lg-3 mb-3">
+            <div class="card h-100">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">
+                        <i class="bi bi-tag-fill text-primary"></i>
+                        {{ genre.genre_name }}
+                    </h5>
+                    <div class="mt-auto pt-3">
+                        <a href="{{ url_for('user_view_genre', genre_id=genre.genre_id) }}"
+                           class="btn btn-sm btn-info w-100">
+                            <i class="bi bi-eye"></i> View
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="bi bi-tags display-1 text-muted"></i>
+                <p class="lead mt-3">No genres found</p>
+                {% if search_query %}
+                <p class="text-muted">Try adjusting your search query</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+{% if genre %}
+<script>
+(function() {
+    const genreId = parseInt('{{ genre.genre_id }}');
+    const totalMovieCount = parseInt('{{ movie_count }}');
+    const searchInput = document.getElementById('movieSearchInput');
+    const clearBtn = document.getElementById('clearSearchBtn');
+    const moviesTableBody = document.getElementById('moviesTableBody');
+    const moviesCount = document.getElementById('moviesCount');
+    let debounceTimer;
+
+    // Format date function
+    function formatDate(dateStr) {
+        if (!dateStr) return 'N/A';
+        const date = new Date(dateStr);
+        const options = { year: 'numeric', month: 'short', day: 'numeric' };
+        return date.toLocaleDateString('en-US', options);
+    }
+
+    // Update movies table
+    function updateMoviesTable(movies, searchQuery) {
+        if (movies.length === 0) {
+            moviesTableBody.innerHTML = `
+                <tr>
+                    <td colspan="4" class="text-center py-4">
+                        <i class="bi bi-film display-4 text-muted"></i>
+                        <p class="lead mt-3 mb-0">No movies found${searchQuery ? ' matching "' + searchQuery + '"' : ''}</p>
+                        ${searchQuery ? '<p class="text-muted">Try adjusting your search query</p>' : ''}
+                    </td>
+                </tr>
+            `;
+        } else {
+            moviesTableBody.innerHTML = movies.map(movie => `
+                <tr>
+                    <td>${movie.movie_id}</td>
+                    <td>
+                        <a href="/user/movies/${movie.movie_id}" class="text-decoration-none">
+                            ${movie.title}
+                        </a>
+                    </td>
+                    <td>${formatDate(movie.released_date)}</td>
+                    <td class="text-end">
+                        <a href="/user/movies/${movie.movie_id}" class="btn btn-sm btn-info" title="View Movie">
+                            <i class="bi bi-eye"></i> View
+                        </a>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Update count header
+        if (searchQuery) {
+            moviesCount.innerHTML = `(found ${movies.length} movie${movies.length !== 1 ? 's' : ''} matching "${searchQuery}")`;
+        } else {
+            moviesCount.innerHTML = `(showing ${movies.length} of ${totalMovieCount})`;
+        }
+    }
+
+    // Fetch movies from API
+    function fetchMovies(searchQuery) {
+        const url = `/api/user/genres/${genreId}/movies?search=${encodeURIComponent(searchQuery)}`;
+
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    console.error('Error:', data.error);
+                    return;
+                }
+                updateMoviesTable(data.movies, searchQuery);
+            })
+            .catch(error => {
+                console.error('Fetch error:', error);
+            });
+    }
+
+    // Handle search input with debouncing
+    searchInput.addEventListener('input', function() {
+        const searchQuery = this.value.trim();
+
+        // Show/hide clear button
+        if (searchQuery) {
+            clearBtn.style.display = 'block';
+        } else {
+            clearBtn.style.display = 'none';
+        }
+
+        // Debounce the API call
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            fetchMovies(searchQuery);
+        }, 300); // Wait 300ms after user stops typing
+    });
+
+    // Handle clear button
+    clearBtn.addEventListener('click', function() {
+        searchInput.value = '';
+        clearBtn.style.display = 'none';
+        fetchMovies(''); // Fetch top 100 movies
+    });
+})();
+</script>
+{% endif %}
+{% endblock %}

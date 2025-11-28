@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+
+{% block title %}Create Cast Entry - Admin Portal{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="bi bi-plus-circle"></i> Create New Cast Entry</h1>
+            <a href="{{ url_for('list_movie_casts') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to List
+            </a>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <form method="post" action="{{ url_for('create_movie_cast') }}" id="castForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="movie_search" class="form-label">
+                                Movie <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control form-control-lg" id="movie_search"
+                                   placeholder="Search for a movie..." autocomplete="off">
+                            <input type="hidden" id="movie_id" name="movie_id">
+                            <div id="movie_results" class="list-group position-absolute" style="z-index: 1000; max-height: 300px; overflow-y: auto; display: none;"></div>
+                            <small class="text-muted">Type to search for movies</small>
+                            <div id="movie_selected" class="mt-2" style="display: none;">
+                                <div class="alert alert-success py-2">
+                                    <i class="bi bi-check-circle"></i> Selected: <strong id="movie_name"></strong>
+                                    <button type="button" class="btn btn-sm btn-outline-danger float-end" onclick="clearMovie()">
+                                        <i class="bi bi-x"></i> Clear
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="person_search" class="form-label">
+                                Person <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control form-control-lg" id="person_search"
+                                   placeholder="Search for a person..." autocomplete="off">
+                            <input type="hidden" id="person_id" name="person_id">
+                            <div id="person_results" class="list-group position-absolute" style="z-index: 1000; max-height: 300px; overflow-y: auto; display: none;"></div>
+                            <small class="text-muted">Type to search for people</small>
+                            <div id="person_selected" class="mt-2" style="display: none;">
+                                <div class="alert alert-success py-2">
+                                    <i class="bi bi-check-circle"></i> Selected: <strong id="person_name"></strong>
+                                    <button type="button" class="btn btn-sm btn-outline-danger float-end" onclick="clearPerson()">
+                                        <i class="bi bi-x"></i> Clear
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="character" class="form-label">Character Name</label>
+                        <input type="text" class="form-control" id="character" name="character"
+                               placeholder="e.g., Tony Stark, Harry Potter">
+                        <small class="text-muted">The character name played by this person</small>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="cast_order" class="form-label">Cast Order</label>
+                            <input type="number" class="form-control" id="cast_order" name="cast_order"
+                                   min="0" placeholder="e.g., 0 for lead, 1 for second lead">
+                            <small class="text-muted">Lower numbers indicate more prominent roles</small>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="credit_id" class="form-label">Credit ID</label>
+                            <input type="text" class="form-control" id="credit_id" name="credit_id"
+                                   placeholder="Optional external credit ID">
+                            <small class="text-muted">TMDb or other database credit identifier</small>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Note:</strong> A person can only be cast once per movie. Duplicate entries will be rejected.
+                    </div>
+
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg" id="submitBtn" disabled>
+                            <i class="bi bi-check-circle"></i> Create Cast Entry
+                        </button>
+                        <a href="{{ url_for('list_movie_casts') }}" class="btn btn-secondary btn-lg">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-body">
+                <h6 class="card-title"><i class="bi bi-lightbulb"></i> Quick Tips</h6>
+                <ul class="mb-0">
+                    <li>Type at least 2 characters to search for movies or people</li>
+                    <li>Cast order typically starts at 0 for the lead actor</li>
+                    <li>Character name is optional but recommended for clarity</li>
+                    <li>You can create people and movies from their respective sections first</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+let movieSearchTimeout;
+let personSearchTimeout;
+
+// Movie search functionality
+document.getElementById('movie_search').addEventListener('input', function(e) {
+    const query = e.target.value.trim();
+
+    clearTimeout(movieSearchTimeout);
+
+    if (query.length < 2) {
+        document.getElementById('movie_results').style.display = 'none';
+        return;
+    }
+
+    movieSearchTimeout = setTimeout(() => {
+        fetch(`{{ url_for('search_movies_api') }}?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                const resultsDiv = document.getElementById('movie_results');
+                resultsDiv.innerHTML = '';
+
+                if (data.movies && data.movies.length > 0) {
+                    data.movies.forEach(movie => {
+                        const item = document.createElement('a');
+                        item.href = '#';
+                        item.className = 'list-group-item list-group-item-action';
+                        item.innerHTML = `
+                            <strong>${movie.title}</strong>
+                            ${movie.released_date ? `<br><small class="text-muted">Released: ${movie.released_date}</small>` : ''}
+                            <small class="text-muted float-end">ID: ${movie.movie_id}</small>
+                        `;
+                        item.onclick = (event) => {
+                            event.preventDefault();
+                            selectMovie(movie.movie_id, movie.title);
+                        };
+                        resultsDiv.appendChild(item);
+                    });
+                    resultsDiv.style.display = 'block';
+                } else {
+                    resultsDiv.innerHTML = '<div class="list-group-item">No movies found</div>';
+                    resultsDiv.style.display = 'block';
+                }
+            })
+            .catch(error => {
+                console.error('Error searching movies:', error);
+            });
+    }, 300);
+});
+
+// Person search functionality
+document.getElementById('person_search').addEventListener('input', function(e) {
+    const query = e.target.value.trim();
+
+    clearTimeout(personSearchTimeout);
+
+    if (query.length < 2) {
+        document.getElementById('person_results').style.display = 'none';
+        return;
+    }
+
+    personSearchTimeout = setTimeout(() => {
+        fetch(`{{ url_for('search_people_api') }}?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                const resultsDiv = document.getElementById('person_results');
+                resultsDiv.innerHTML = '';
+
+                if (data.people && data.people.length > 0) {
+                    data.people.forEach(person => {
+                        const item = document.createElement('a');
+                        item.href = '#';
+                        item.className = 'list-group-item list-group-item-action';
+                        item.innerHTML = `
+                            <strong>${person.name}</strong>
+                            <small class="text-muted"> - ${person.gender_display}</small>
+                            <small class="text-muted float-end">ID: ${person.person_id}</small>
+                        `;
+                        item.onclick = (event) => {
+                            event.preventDefault();
+                            selectPerson(person.person_id, person.name);
+                        };
+                        resultsDiv.appendChild(item);
+                    });
+                    resultsDiv.style.display = 'block';
+                } else {
+                    resultsDiv.innerHTML = '<div class="list-group-item">No people found</div>';
+                    resultsDiv.style.display = 'block';
+                }
+            })
+            .catch(error => {
+                console.error('Error searching people:', error);
+            });
+    }, 300);
+});
+
+function selectMovie(id, title) {
+    document.getElementById('movie_id').value = id;
+    document.getElementById('movie_search').value = '';
+    document.getElementById('movie_name').textContent = title;
+    document.getElementById('movie_selected').style.display = 'block';
+    document.getElementById('movie_results').style.display = 'none';
+    checkFormComplete();
+}
+
+function selectPerson(id, name) {
+    document.getElementById('person_id').value = id;
+    document.getElementById('person_search').value = '';
+    document.getElementById('person_name').textContent = name;
+    document.getElementById('person_selected').style.display = 'block';
+    document.getElementById('person_results').style.display = 'none';
+    checkFormComplete();
+}
+
+function clearMovie() {
+    document.getElementById('movie_id').value = '';
+    document.getElementById('movie_search').value = '';
+    document.getElementById('movie_selected').style.display = 'none';
+    checkFormComplete();
+}
+
+function clearPerson() {
+    document.getElementById('person_id').value = '';
+    document.getElementById('person_search').value = '';
+    document.getElementById('person_selected').style.display = 'none';
+    checkFormComplete();
+}
+
+function checkFormComplete() {
+    const movieId = document.getElementById('movie_id').value;
+    const personId = document.getElementById('person_id').value;
+    const submitBtn = document.getElementById('submitBtn');
+
+    if (movieId && personId) {
+        submitBtn.disabled = false;
+    } else {
+        submitBtn.disabled = true;
+    }
+}
+
+// Hide results when clicking outside
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('#movie_search') && !e.target.closest('#movie_results')) {
+        document.getElementById('movie_results').style.display = 'none';
+    }
+    if (!e.target.closest('#person_search') && !e.target.closest('#person_results')) {
+        document.getElementById('person_results').style.display = 'none';
+    }
+});
+
+// Form validation
+document.getElementById('castForm').addEventListener('submit', function(e) {
+    const movieId = document.getElementById('movie_id').value;
+    const personId = document.getElementById('person_id').value;
+
+    if (!movieId || !personId) {
+        e.preventDefault();
+        alert('Please select both a movie and a person');
+        return false;
+    }
+});
+</script>
+{% endblock %}
+{% endblock %}

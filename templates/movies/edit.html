@@ -1,0 +1,103 @@
+<!-- ============================================ -->
+<!-- templates/movies/edit.html -->
+<!-- ============================================ -->
+
+{% extends "base.html" %}
+
+{% block title %}Edit {{ movie.title }} - Admin Portal{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="bi bi-pencil"></i> Edit Movie</h1>
+            <a href="{{ url_for('view_movie', movie_id=movie.movie_id) }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back
+            </a>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <form method="post" action="{{ url_for('edit_movie', movie_id=movie.movie_id) }}">
+                    <!-- Basic Info -->
+                    <h5 class="mb-3">Basic Information</h5>
+                    
+                    <div class="mb-3">
+                        <label for="movie_id" class="form-label">Movie ID</label>
+                        <input type="number" class="form-control" id="movie_id" value="{{ movie.movie_id }}" disabled>
+                        <small class="text-muted">Movie ID cannot be changed</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Title <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="title" name="title" value="{{ movie.title }}" required>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <!-- Additional Info -->
+                    <h5 class="mb-3">Additional Information</h5>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="released_date" class="form-label">Release Date</label>
+                            <input type="date" class="form-control" id="released_date" name="released_date" 
+                                   value="{{ movie.released_date if movie.released_date else '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="runtime" class="form-label">Runtime (minutes)</label>
+                            <input type="number" class="form-control" id="runtime" name="runtime" 
+                                   value="{{ movie.runtime if movie.runtime else '' }}" min="0">
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="language" class="form-label">Language</label>
+                            <input type="text" class="form-control" id="language" name="language" 
+                                   value="{{ movie.language if movie.language else '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="popularity" class="form-label">Popularity</label>
+                            <input type="number" class="form-control" id="popularity" name="popularity" 
+                                   value="{{ movie.popularity if movie.popularity else '' }}" step="0.01" min="0">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="tagline" class="form-label">Tagline</label>
+                        <input type="text" class="form-control" id="tagline" name="tagline" 
+                               value="{{ movie.tagline if movie.tagline else '' }}">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="overview" class="form-label">Overview</label>
+                        <textarea class="form-control" id="overview" name="overview" rows="4">{{ movie.overview if movie.overview else '' }}</textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="poster_path" class="form-label">Poster URL</label>
+                        <input type="url" class="form-control" id="poster_path" name="poster_path" 
+                               value="{{ movie.poster_path if movie.poster_path else '' }}">
+                    </div>
+
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="adult" name="adult" 
+                               {% if movie.adult %}checked{% endif %}>
+                        <label class="form-check-label" for="adult">
+                            Adult Content (18+)
+                        </label>
+                    </div>
+
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Update Movie
+                        </button>
+                        <a href="{{ url_for('view_movie', movie_id=movie.movie_id) }}" class="btn btn-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

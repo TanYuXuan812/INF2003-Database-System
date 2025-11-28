@@ -1,0 +1,121 @@
+<!-- ============================================ -->
+<!-- templates/movies/view.html -->
+<!-- ============================================ -->
+
+{% extends "base.html" %}
+
+{% block title %}{{ movie.title }} - View Movie{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>
+                <i class="bi bi-film"></i> {{ movie.title }}
+                {% if movie.adult %}
+                    <span class="badge badge-adult">18+</span>
+                {% endif %}
+            </h1>
+            <a href="{{ url_for('list_movies') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back
+            </a>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="row">
+                    <!-- Poster -->
+                    {% if movie.poster_path %}
+                    <div class="col-md-4 mb-3">
+                        <img src="{{ movie.poster_path }}" 
+                             alt="{{ movie.title }}" 
+                             class="img-fluid rounded"
+                             onerror="this.src='https://via.placeholder.com/300x450?text=No+Image'">
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Details -->
+                    <div class="col-md-{{ '8' if movie.poster_path else '12' }}">
+                        <h5 class="card-title">Movie Details</h5>
+                        
+                        <table class="table table-sm">
+                            <tr>
+                                <th style="width: 150px;">Movie ID:</th>
+                                <td>{{ movie.movie_id }}</td>
+                            </tr>
+                            <tr>
+                                <th>Release Date:</th>
+                                <td>{{ movie.released_date|format_date }}</td>
+                            </tr>
+                            <tr>
+                                <th>Runtime:</th>
+                                <td>{{ movie.runtime }} minutes {% if movie.runtime %}({{ (movie.runtime / 60)|round(1) }} hours){% else %}N/A{% endif %}</td>
+                            </tr>
+                            <tr>
+                                <th>Language:</th>
+                                <td>{{ movie.language or 'N/A' }}</td>
+                            </tr>
+                            <tr>
+                                <th>Popularity:</th>
+                                <td>{{ movie.popularity|format_popularity }}</td>
+                            </tr>
+                            <tr>
+                                <th>Adult:</th>
+                                <td>
+                                    {% if movie.adult %}
+                                        <span class="badge bg-danger">Yes</span>
+                                    {% else %}
+                                        <span class="badge bg-success">No</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </table>
+
+                        {% if movie.tagline %}
+                        <div class="alert alert-info">
+                            <i class="bi bi-quote"></i> <em>{{ movie.tagline }}</em>
+                        </div>
+                        {% endif %}
+
+                        {% if movie.overview %}
+                        <h6 class="mt-3">Overview</h6>
+                        <p>{{ movie.overview }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('edit_movie', movie_id=movie.movie_id) }}" class="btn btn-warning">
+                <i class="bi bi-pencil"></i> Edit Movie
+            </a>
+            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                <i class="bi bi-trash"></i> Delete Movie
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete <strong>{{ movie.title }}</strong>? This action cannot be undone.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" action="{{ url_for('delete_movie', movie_id=movie.movie_id) }}" class="d-inline">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

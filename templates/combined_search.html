@@ -1,0 +1,278 @@
+{% extends 'base.html' %}
+
+{% block title %}Advanced Search - Movie Database{% endblock %}
+
+{% block extra_css %}
+<style>
+    .search-card {
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .filter-section {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 1.5rem;
+    }
+    .results-table th {
+        background-color: #f8f9fa;
+        position: sticky;
+        top: 0;
+    }
+    .rating-badge {
+        font-size: 0.9rem;
+        padding: 0.4rem 0.6rem;
+    }
+    .rating-excellent { background-color: #28a745; color: white; }
+    .rating-good { background-color: #17a2b8; color: white; }
+    .rating-average { background-color: #ffc107; color: black; }
+    .rating-poor { background-color: #dc3545; color: white; }
+    .no-rating { background-color: #6c757d; color: white; }
+    .genre-tags {
+        font-size: 0.8rem;
+    }
+    .genre-tag {
+        display: inline-block;
+        background-color: #e9ecef;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        margin: 0.1rem;
+    }
+    .results-count {
+        font-size: 0.9rem;
+        color: #6c757d;
+    }
+    .table-responsive {
+        max-height: 600px;
+        overflow-y: auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <div>
+                <h2><i class="bi bi-search"></i> Advanced Search</h2>
+                <p class="text-muted">Browse top movies by Popularity/Rating, or filter by Title, Genre, Actor, Year Range</p>
+            </div>
+            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-house"></i> Back to Home
+            </a>
+        </div>
+    </div>
+
+    <!-- Search Form -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card search-card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-funnel"></i> Search Filters</h5>
+                </div>
+                <div class="card-body">
+                    <form method="GET" action="{{ url_for('combined_search') }}">
+                        <div class="row">
+                            <!-- Title Filter -->
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label fw-bold">Movie Title</label>
+                                <input type="text" class="form-control" id="title" name="title"
+                                       value="{{ title }}" placeholder="e.g., Jumanji">
+                                <small class="text-muted">Partial match supported</small>
+                            </div>
+
+                            <!-- Genre Filter -->
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label fw-bold">Genre</label>
+                                <select class="form-select" id="genre" name="genre">
+                                    <option value="">-- Any Genre --</option>
+                                    {% for g in genres_list %}
+                                        {% if g is mapping %}
+                                            <option value="{{ g.genre_name or g.name }}" {% if genre == (g.genre_name or g.name) %}selected{% endif %}>
+                                                {{ g.genre_name or g.name }}
+                                            </option>
+                                        {% else %}
+                                            <option value="{{ g[1] if g|length > 1 else g }}" {% if genre == (g[1] if g|length > 1 else g|string) %}selected{% endif %}>
+                                                {{ g[1] if g|length > 1 else g }}
+                                            </option>
+                                        {% endif %}
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <!-- Actor Filter -->
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label fw-bold">Actor Name</label>
+                                <input type="text" class="form-control" id="actor" name="actor"
+                                       value="{{ actor }}" placeholder="e.g., Tom Hanks">
+                                <small class="text-muted">Partial match supported</small>
+                            </div>
+
+                            <!-- Sort By -->
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label fw-bold">Sort By</label>
+                                <select class="form-select" id="sort_by" name="sort_by">
+                                    <option value="popularity" {% if sort_by == 'popularity' %}selected{% endif %}>Popularity</option>
+                                    <option value="rating" {% if sort_by == 'rating' %}selected{% endif %}>Rating</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <!-- Year Range -->
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label fw-bold">Year From</label>
+                                <input type="number" class="form-control" id="year_start" name="year_start"
+                                       value="{{ year_start }}" placeholder="e.g., 1990" min="1900" max="2030">
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label fw-bold">Year To</label>
+                                <input type="number" class="form-control" id="year_end" name="year_end"
+                                       value="{{ year_end }}" placeholder="e.g., 2020" min="1900" max="2030">
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-search"></i> Search
+                                </button>
+                                <a href="{{ url_for('combined_search') }}" class="btn btn-outline-secondary">
+                                    <i class="bi bi-x-circle"></i> Clear Filters
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Section -->
+    {% if search_performed %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card search-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-film"></i> Search Results</h5>
+                    <span class="results-count">
+                        Found <strong>{{ movies|length }}</strong> movies
+                        {% if sort_by == 'rating' %}(sorted by rating){% else %}(sorted by popularity){% endif %}
+                    </span>
+                </div>
+                <div class="card-body p-0">
+                    {% if movies %}
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped mb-0">
+                            <thead>
+                                <tr>
+                                    <th style="width: 5%">#</th>
+                                    <th style="width: 30%">Title</th>
+                                    <th style="width: 10%">Release Date</th>
+                                    <th style="width: 10%">Popularity</th>
+                                    <th style="width: 15%">Rating</th>
+                                    <th style="width: 30%">Genres</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for movie in movies %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td>
+                                        <a href="{{ url_for('view_movie', movie_id=movie.movie_id) }}" class="text-decoration-none">
+                                            <strong>{{ movie.title }}</strong>
+                                        </a>
+                                        <br>
+                                        <small class="text-muted">ID: {{ movie.movie_id }}</small>
+                                    </td>
+                                    <td>
+                                        {% if movie.released_date %}
+                                            {{ movie.released_date }}
+                                        {% else %}
+                                            <span class="text-muted">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if movie.popularity %}
+                                            {{ "%.1f"|format(movie.popularity) }}
+                                        {% else %}
+                                            <span class="text-muted">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if movie.num_ratings > 0 %}
+                                            {% set rating = movie.avg_rating %}
+                                            <span class="badge rating-badge
+                                                {% if rating >= 4.0 %}rating-excellent
+                                                {% elif rating >= 3.0 %}rating-good
+                                                {% elif rating >= 2.0 %}rating-average
+                                                {% else %}rating-poor{% endif %}">
+                                                {{ "%.2f"|format(rating) }}
+                                            </span>
+                                            <br>
+                                            <small class="text-muted">{{ movie.num_ratings }} ratings</small>
+                                        {% else %}
+                                            <span class="badge rating-badge no-rating">No ratings</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="genre-tags">
+                                        {% if movie.genres %}
+                                            {% for g in movie.genres.split(', ') %}
+                                                <span class="genre-tag">{{ g }}</span>
+                                            {% endfor %}
+                                        {% else %}
+                                            <span class="text-muted">No genres</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i>
+                        <p class="text-muted mt-3">No movies found matching your criteria.</p>
+                        <p class="text-muted">Try adjusting your filters or clearing them to see all movies.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <!-- Initial State - No Search Yet -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card search-card">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-search text-primary" style="font-size: 4rem;"></i>
+                    <h4 class="mt-3">Start Your Search</h4>
+                    <p class="text-muted">
+                        Use the filters above to search for movies, or simply click "Search" to see top movies.<br>
+                        You can filter by any combination of Title, Genre, Actor, and Year Range.
+                    </p>
+                    <p class="text-muted">
+                        <strong>Tip:</strong> Sort by Popularity to see trending movies, or by Rating to find the highest-rated ones.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Info Card -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <h6><i class="bi bi-info-circle"></i> About This Search</h6>
+                <ul class="mb-0 small">
+                    <li>This search uses the <strong>links bridge</strong> to properly connect movies (TMDB IDs) with ratings (MovieLens IDs).</li>
+                    <li>Ratings are calculated dynamically by averaging all user ratings for each movie.</li>
+                    <li>The same search logic is used by the <a href="{{ url_for('benchmark_page') }}">Benchmark</a> for fair PostgreSQL vs MongoDB comparison.</li>
+                    <li>All filters are optional - use any combination you like.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

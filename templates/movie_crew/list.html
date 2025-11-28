@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}Movie Crew - Admin Portal{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1 class="mb-4"><i class="bi bi-gear-wide-connected"></i> Movie Crew</h1>
+    </div>
+</div>
+
+<div class="search-box">
+    <form method="get" action="{{ url_for('list_movie_crews') }}">
+        <div class="input-group mb-4">
+            <input type="text" class="form-control" name="search"
+                   placeholder="Search by movie title or person name..."
+                   value="{{ search_query }}">
+            <button class="btn btn-primary" type="submit">
+                <i class="bi bi-search"></i> Search
+            </button>
+            {% if search_query %}
+            <a href="{{ url_for('list_movie_crews') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-x"></i> Clear
+            </a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+{% if search_query %}
+    <p class="text-muted">Found {{ crews|length }} crew entr{{ 'y' if crews|length == 1 else 'ies' }} matching "{{ search_query }}"</p>
+{% endif %}
+
+<div class="mb-3">
+    <a href="{{ url_for('create_movie_crew') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Add New Crew Entry
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if crews %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Movie</th>
+                        <th>Person</th>
+                        <th>Department</th>
+                        <th>Job</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for crew in crews %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('view_movie', movie_id=crew.movie_id) }}" class="text-decoration-none">
+                                <i class="bi bi-film"></i> {{ crew.movie_title }}
+                            </a>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('view_person', person_id=crew.person_id) }}" class="text-decoration-none">
+                                <i class="bi bi-person-circle"></i> {{ crew.person_name }}
+                            </a>
+                        </td>
+                        <td>
+                            {% if crew.department %}
+                                <span class="badge bg-primary">{{ crew.department }}</span>
+                            {% else %}
+                                <span class="text-muted"></span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if crew.job %}
+                                <span class="badge bg-success">{{ crew.job }}</span>
+                            {% else %}
+                                <span class="text-muted"></span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <div class="d-inline-flex gap-1">
+                                <a href="{{ url_for('view_movie_crew', movie_id=crew.movie_id, person_id=crew.person_id, job=crew.job) }}"
+                                   class="btn btn-sm btn-info" title="View">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{{ url_for('edit_movie_crew', movie_id=crew.movie_id, person_id=crew.person_id, job=crew.job) }}"
+                                   class="btn btn-sm btn-warning" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-gear-wide-connected display-1 text-muted"></i>
+            <p class="lead mt-3">No crew entries found</p>
+            <a href="{{ url_for('create_movie_crew') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Create Your First Crew Entry
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Movie Database Admin{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+        }
+        
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            zoom: 110%;
+        }
+        
+        .navbar {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 0.5rem 0;
+        }
+
+        .navbar-brand {
+            font-size: 1rem;
+            font-weight: 600;
+            padding: 0.4rem 0.6rem;
+        }
+
+        .navbar-nav .nav-item {
+            margin: 0 0.05rem;
+        }
+
+        .navbar-nav .nav-link {
+            padding: 0.4rem 0.45rem;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            font-size: 0.8rem;
+        }
+
+        .navbar-nav .nav-link:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .navbar-nav .nav-link i {
+            margin-right: 0.3rem;
+            font-size: 0.85rem;
+        }
+
+        .navbar .dropdown-menu {
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border: none;
+            margin-top: 0.5rem;
+        }
+
+        .navbar .badge {
+            font-size: 0.7rem;
+            padding: 0.25rem 0.4rem;
+        }
+
+        /* MongoDB badge positioning */
+        .navbar-nav.ms-auto .nav-item.dropdown.mongodb-badge {
+            margin-right: -3rem !important;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 1600px) {
+            .navbar-nav .nav-link {
+                padding: 0.35rem 0.35rem;
+                font-size: 0.7rem;
+            }
+        }
+
+        @media (max-width: 1400px) {
+            .navbar-nav .nav-link {
+                padding: 0.3rem 0.3rem;
+                font-size: 0.65rem;
+            }
+            .navbar-brand {
+                font-size: 0.85rem;
+            }
+        }
+
+        @media (max-width: 1200px) {
+            .navbar-nav .nav-link {
+                padding: 0.25rem 0.25rem;
+                font-size: 0.6rem;
+            }
+            .navbar-brand {
+                font-size: 0.75rem;
+            }
+        }
+        
+        .content-wrapper {
+            flex: 1;
+            padding: 2rem 0;
+            background-color: #f8f9fa;
+        }
+        
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .btn-primary {
+            background: var(--secondary-color);
+            border: none;
+        }
+        
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+        
+        .table-hover tbody tr:hover {
+            background-color: rgba(52, 152, 219, 0.1);
+        }
+        
+        .badge-adult {
+            background-color: #e74c3c;
+        }
+        
+        .search-box {
+            max-width: 500px;
+            margin: 0 auto 2rem;
+        }
+        
+        footer {
+            background: var(--primary-color);
+            color: white;
+            padding: 1rem 0;
+            margin-top: auto;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <div class="navbar-brand">
+                <div class="dropdown d-inline-block">
+                    <a class="dropdown-toggle text-white text-decoration-none" href="#" id="modeDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        {% if request.path.startswith('/user') %}
+                        <i class="bi bi-film"></i> Movie DB User
+                        {% else %}
+                        <i class="bi bi-film"></i> Movie DB Admin
+                        {% endif %}
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="modeDropdown">
+                        <li>
+                            <a class="dropdown-item" href="{{ url_for('index') }}">
+                                <i class="bi bi-shield-lock"></i> Movie DB Admin
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{{ url_for('user_home') }}">
+                                <i class="bi bi-person"></i> Movie DB User
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav {% if current_db_raw == 'mongodb' %}me-auto{% else %}ms-auto{% endif %}">
+                    {% if not request.path.startswith('/user') %}
+
+                    {% if current_db_raw == 'postgres' %}
+                    <!-- PostgreSQL Navigation -->
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('list_movies') }}">
+                            <i class="bi bi-list-ul"></i> Movies
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('create_movie') }}">
+                            <i class="bi bi-plus-circle"></i> Add Movie
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('list_genres') }}">
+                            <i class="bi bi-tags"></i> Genres
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('list_companies') }}">
+                            <i class="bi bi-buildings"></i> Companies
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('list_ratings') }}">
+                            <i class="bi bi-star-fill"></i> Ratings
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('list_movie_genres') }}">
+                            <i class="bi bi-link-45deg"></i> Movie-Genres
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('list_movie_companies') }}">
+                            <i class="bi bi-building"></i> Movie-Companies
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('list_people') }}">
+                            <i class="bi bi-people"></i> People
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('list_movie_casts') }}">
+                            <i class="bi bi-person-video"></i> Movie Cast
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('list_movie_crews') }}">
+                            <i class="bi bi-gear-wide-connected"></i> Movie Crew
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('combined_search') }}">
+                            <i class="bi bi-search"></i> Advanced Search
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('benchmark_page') }}">
+                            <i class="bi bi-speedometer2"></i> Benchmark
+                        </a>
+                    </li>
+
+                    {% else %}
+                    <!-- MongoDB Navigation -->
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('list_movies') }}">
+                            <i class="bi bi-film"></i> Movies
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('create_movie') }}">
+                            <i class="bi bi-plus-circle"></i> Add Movie
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/genres">
+                            <i class="bi bi-tags"></i> Genres
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/companies">
+                            <i class="bi bi-building"></i> Companies
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('mongo_list_ratings') }}">
+                            <i class="bi bi-star"></i> Ratings
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('mongo_list_cast') }}">
+                            <i class="bi bi-person-video"></i> Cast
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('mongo_list_crew') }}">
+                            <i class="bi bi-camera-reels"></i> Crew
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('combined_search') }}">
+                            <i class="bi bi-search"></i> Advanced Search
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('benchmark_page') }}">
+                            <i class="bi bi-speedometer2"></i> Benchmark
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+                {% endif %}
+
+                <ul class="navbar-nav ms-auto">
+                    {% if not request.path.startswith('/user') %}
+                    <li class="nav-item dropdown {% if current_db_raw == 'mongodb' %}mongodb-badge{% endif %}">
+                        <a class="nav-link dropdown-toggle" href="#" id="dbDropdown" role="button"
+                           data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-database"></i>
+                            <span class="badge bg-light text-dark">{{ current_db_type }}</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dbDropdown">
+                            <li>
+                                <h6 class="dropdown-header">Switch Database</h6>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form method="post" action="{{ url_for('switch_database') }}" class="px-3 py-2">
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="radio" name="db_type"
+                                               id="db_postgres" value="postgres"
+                                               {% if current_db_raw == 'postgres' %}checked{% endif %}
+                                               onchange="this.form.submit()">
+                                        <label class="form-check-label" for="db_postgres">
+                                            <i class="bi bi-server"></i> PostgreSQL
+                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="db_type"
+                                               id="db_mongodb" value="mongodb"
+                                               {% if current_db_raw == 'mongodb' %}checked{% endif %}
+                                               onchange="this.form.submit()">
+                                        <label class="form-check-label" for="db_mongodb">
+                                            <i class="bi bi-leaf"></i> MongoDB
+                                        </label>
+                                    </div>
+                                </form>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <small class="dropdown-item-text text-muted">
+                                    Currently using: <strong>{{ current_db_type }}</strong>
+                                </small>
+                            </li>
+                        </ul>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Flash Messages -->
+    <div class="container mt-3">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <!-- Content -->
+    <div class="content-wrapper">
+        <div class="container">
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="text-center">
+        <div class="container">
+            <p class="mb-0">&copy; 2025 Movie Database Admin Portal</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

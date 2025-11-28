@@ -1,0 +1,25 @@
+@app.route('/mongo/movies/<int:movie_id>')
+def view_mongo_movie(movie_id):
+    """View a MongoDB movie in admin view"""
+    try:
+        # Get movie and related details using mongo_admin_query helpers
+        movie = mongo_admin_get_movie(movie_id)
+        if not movie:
+            flash('Movie not found', 'warning')
+            return redirect(url_for('list_movies'))
+
+        # Related data
+        genres = mongo_admin_read_genres(movie_id)
+        companies = admin_read_companies(movie_id) if 'admin_read_companies' in globals() else []
+        cast = admin_read_movie_cast(movie_id) if 'admin_read_movie_cast' in globals() else []
+        crew = admin_read_movie_crew(movie_id) if 'admin_read_movie_crew' in globals() else []
+
+        return render_template('mongo_movies/view.html',
+                               movie=movie,
+                               genres=genres,
+                               companies=companies,
+                               cast=cast,
+                               crew=crew)
+    except Exception as e:
+        flash(f'Error loading movie: {str(e)}', 'danger')
+        return redirect(url_for('list_movies'))

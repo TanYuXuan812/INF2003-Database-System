@@ -1,0 +1,566 @@
+{% extends 'base.html' %}
+
+{% block title %}Performance Benchmark - PostgreSQL vs MongoDB{% endblock %}
+
+{% block extra_css %}
+<style>
+    .benchmark-card {
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .metric-value {
+        font-size: 1.5rem;
+        font-weight: bold;
+    }
+    .metric-label {
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+    .postgres-color { color: #336791; }
+    .mongo-color { color: #4db33d; }
+    .postgres-bg { background-color: rgba(51, 103, 145, 0.1); }
+    .mongo-bg { background-color: rgba(77, 179, 61, 0.1); }
+    .winner {
+        border: 2px solid #28a745 !important;
+        box-shadow: 0 0 10px rgba(40, 167, 69, 0.3);
+    }
+    .results-table th {
+        background-color: #f8f9fa;
+    }
+    .note-item {
+        background-color: #fff3cd;
+        border-left: 4px solid #ffc107;
+        padding: 0.5rem 1rem;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+    }
+    #loading-spinner {
+        display: none;
+    }
+    .chart-container {
+        position: relative;
+        height: 300px;
+        margin-top: 1rem;
+    }
+    pre.explain-output {
+        background-color: #f8f9fa;
+        padding: 1rem;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="bi bi-speedometer2"></i> Performance Benchmark</h2>
+            <p class="text-muted">Compare PostgreSQL vs MongoDB query performance with fair, reproducible measurements</p>
+        </div>
+    </div>
+
+    <!-- Configuration Form -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card benchmark-card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-gear"></i> Benchmark Configuration</h5>
+                </div>
+                <div class="card-body">
+                    <form id="benchmark-form">
+                        <div class="row">
+                            <!-- Test Type Selection -->
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Test Type</label>
+                                <select class="form-select" id="test_type" name="test_type">
+                                    <option value="title">Title Search</option>
+                                    <option value="genre">Genre Search</option>
+                                    <option value="year_range">Year Range</option>
+                                    <option value="actor">Actor Search</option>
+                                    <option value="combined">Advanced Search</option>
+                                    <option value="deep_fetch">Deep Fetch (Single Movie)</option>
+                                </select>
+                            </div>
+
+                            <!-- Runs and Limit -->
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label fw-bold">Runs</label>
+                                <input type="number" class="form-control" id="runs" name="runs" value="50" min="5" max="200">
+                                <small class="text-muted">5-200 iterations</small>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label fw-bold">Result Limit</label>
+                                <input type="number" class="form-control" id="limit" name="limit" value="50" min="1" max="200">
+                                <small class="text-muted">Max results per query</small>
+                            </div>
+                        </div>
+
+                        <!-- Dynamic Inputs -->
+                        <div class="row" id="dynamic-inputs">
+                            <!-- Title Search Input -->
+                            <div class="col-md-6 mb-3 input-group-title">
+                                <label class="form-label fw-bold">Search Term</label>
+                                <input type="text" class="form-control" id="term" name="term" value="Toy Story">
+                            </div>
+
+                            <!-- Genre Input -->
+                            <div class="col-md-6 mb-3 input-group-genre" style="display: none;">
+                                <label class="form-label fw-bold">Genre Name</label>
+                                <input type="text" class="form-control" id="genre_term" name="genre_term" value="Animation">
+                            </div>
+
+                            <!-- Actor Input -->
+                            <div class="col-md-6 mb-3 input-group-actor" style="display: none;">
+                                <label class="form-label fw-bold">Actor Name</label>
+                                <input type="text" class="form-control" id="actor_term" name="actor_term" value="Tom Hanks">
+                            </div>
+
+                            <!-- Year Range Inputs -->
+                            <div class="col-md-3 mb-3 input-group-year" style="display: none;">
+                                <label class="form-label fw-bold">Year From</label>
+                                <input type="number" class="form-control" id="year_from" name="year_from" value="1990" min="1900" max="2030">
+                            </div>
+                            <div class="col-md-3 mb-3 input-group-year" style="display: none;">
+                                <label class="form-label fw-bold">Year To</label>
+                                <input type="number" class="form-control" id="year_to" name="year_to" value="2000" min="1900" max="2030">
+                            </div>
+
+                            <!-- Deep Fetch Movie ID -->
+                            <div class="col-md-6 mb-3 input-group-deep" style="display: none;">
+                                <label class="form-label fw-bold">Movie ID (optional)</label>
+                                <input type="number" class="form-control" id="movie_id" name="movie_id" placeholder="Leave empty for first available">
+                            </div>
+
+                            <!-- Sort By (for combined test) -->
+                            <div class="col-md-4 mb-3 input-group-combined" style="display: none;">
+                                <label class="form-label fw-bold">Sort By</label>
+                                <select class="form-select" id="sort_by" name="sort_by">
+                                    <option value="popularity">Popularity</option>
+                                    <option value="rating">Rating</option>
+                                </select>
+                                <small class="text-muted">Test fair rating calculation</small>
+                            </div>
+                        </div>
+
+                        <!-- Options -->
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="include_explain" name="include_explain">
+                                    <label class="form-check-label" for="include_explain">
+                                        Include Query Explain Plans
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-lg" id="run-benchmark">
+                            <i class="bi bi-play-fill"></i> Run Benchmark
+                        </button>
+                        <span id="loading-spinner" class="ms-3">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            Running benchmark...
+                        </span>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Panel -->
+        <div class="col-lg-4">
+            <div class="card benchmark-card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-info-circle"></i> Methodology</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2"><i class="bi bi-check-circle text-success"></i> 3 warm-up runs excluded</li>
+                        <li class="mb-2"><i class="bi bi-check-circle text-success"></i> Uses time.perf_counter()</li>
+                        <li class="mb-2"><i class="bi bi-check-circle text-success"></i> Full result materialization</li>
+                        <li class="mb-2"><i class="bi bi-check-circle text-success"></i> Connection outside loops</li>
+                        <li class="mb-2"><i class="bi bi-check-circle text-success"></i> Capped payload (LIMIT)</li>
+                        <li class="mb-2"><i class="bi bi-check-circle text-success"></i> Escaped text inputs</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Section -->
+    <div class="row" id="results-section" style="display: none;">
+        <!-- Summary Cards -->
+        <div class="col-md-6 mb-4">
+            <div class="card benchmark-card postgres-bg" id="postgres-card">
+                <div class="card-header">
+                    <h5 class="mb-0 postgres-color"><i class="bi bi-server"></i> PostgreSQL</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="metric-value postgres-color" id="pg-avg">-</div>
+                            <div class="metric-label">Avg Latency (ms)</div>
+                        </div>
+                        <div class="col-4">
+                            <div class="metric-value postgres-color" id="pg-ops">-</div>
+                            <div class="metric-label">Ops/sec</div>
+                        </div>
+                        <div class="col-4">
+                            <div class="metric-value postgres-color" id="pg-count">-</div>
+                            <div class="metric-label">Results</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card benchmark-card mongo-bg" id="mongo-card">
+                <div class="card-header">
+                    <h5 class="mb-0 mongo-color"><i class="bi bi-leaf"></i> MongoDB</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="metric-value mongo-color" id="mongo-avg">-</div>
+                            <div class="metric-label">Avg Latency (ms)</div>
+                        </div>
+                        <div class="col-4">
+                            <div class="metric-value mongo-color" id="mongo-ops">-</div>
+                            <div class="metric-label">Ops/sec</div>
+                        </div>
+                        <div class="col-4">
+                            <div class="metric-value mongo-color" id="mongo-count">-</div>
+                            <div class="metric-label">Results</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chart -->
+        <div class="col-12 mb-4">
+            <div class="card benchmark-card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Performance Comparison</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="chart-container">
+                                <canvas id="latencyChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="chart-container">
+                                <canvas id="opsChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Table -->
+        <div class="col-12 mb-4">
+            <div class="card benchmark-card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-table"></i> Detailed Metrics</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-striped results-table">
+                        <thead>
+                            <tr>
+                                <th>Metric</th>
+                                <th class="postgres-color">PostgreSQL</th>
+                                <th class="mongo-color">MongoDB</th>
+                                <th>Winner</th>
+                            </tr>
+                        </thead>
+                        <tbody id="metrics-table">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notes -->
+        <div class="col-12 mb-4" id="notes-section">
+            <div class="card benchmark-card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-sticky"></i> Notes</h5>
+                </div>
+                <div class="card-body" id="notes-container">
+                </div>
+            </div>
+        </div>
+
+        <!-- Explain Plans -->
+        <div class="col-12 mb-4" id="explain-section" style="display: none;">
+            <div class="card benchmark-card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-file-earmark-code"></i> Query Explain Plans</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <details>
+                                <summary class="fw-bold postgres-color mb-2">PostgreSQL EXPLAIN</summary>
+                                <pre class="explain-output" id="pg-explain"></pre>
+                            </details>
+                        </div>
+                        <div class="col-md-6">
+                            <details>
+                                <summary class="fw-bold mongo-color mb-2">MongoDB Explain</summary>
+                                <pre class="explain-output" id="mongo-explain"></pre>
+                            </details>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Display -->
+    <div class="row" id="error-section" style="display: none;">
+        <div class="col-12">
+            <div class="alert alert-danger" id="error-message"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    let latencyChart = null;
+    let opsChart = null;
+
+    // Handle dynamic input visibility
+    document.getElementById('test_type').addEventListener('change', function() {
+        const testType = this.value;
+
+        // Hide all input groups
+        document.querySelectorAll('[class*="input-group-"]').forEach(el => el.style.display = 'none');
+
+        // Show relevant inputs based on test type
+        if (testType === 'title') {
+            document.querySelectorAll('.input-group-title').forEach(el => el.style.display = 'block');
+        } else if (testType === 'genre') {
+            document.querySelectorAll('.input-group-genre').forEach(el => el.style.display = 'block');
+        } else if (testType === 'year_range') {
+            document.querySelectorAll('.input-group-year').forEach(el => el.style.display = 'block');
+        } else if (testType === 'actor') {
+            document.querySelectorAll('.input-group-actor').forEach(el => el.style.display = 'block');
+        } else if (testType === 'combined') {
+            document.querySelectorAll('.input-group-genre').forEach(el => el.style.display = 'block');
+            document.querySelectorAll('.input-group-actor').forEach(el => el.style.display = 'block');
+            document.querySelectorAll('.input-group-year').forEach(el => el.style.display = 'block');
+            document.querySelectorAll('.input-group-combined').forEach(el => el.style.display = 'block');
+        } else if (testType === 'deep_fetch') {
+            document.querySelectorAll('.input-group-deep').forEach(el => el.style.display = 'block');
+        }
+    });
+
+    // Form submission
+    document.getElementById('benchmark-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        // Show loading, hide results/errors
+        document.getElementById('loading-spinner').style.display = 'inline-block';
+        document.getElementById('run-benchmark').disabled = true;
+        document.getElementById('results-section').style.display = 'none';
+        document.getElementById('error-section').style.display = 'none';
+
+        // Build request data
+        const data = {
+            test_type: document.getElementById('test_type').value,
+            term: document.getElementById('term').value,
+            genre_term: document.getElementById('genre_term').value,
+            actor_term: document.getElementById('actor_term').value,
+            year_from: parseInt(document.getElementById('year_from').value),
+            year_to: parseInt(document.getElementById('year_to').value),
+            movie_id: document.getElementById('movie_id').value || null,
+            runs: parseInt(document.getElementById('runs').value),
+            limit: parseInt(document.getElementById('limit').value),
+            include_explain: document.getElementById('include_explain').checked,
+            sort_by: document.getElementById('sort_by').value
+        };
+
+        try {
+            const response = await fetch('/benchmark', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (result.error) {
+                throw new Error(result.error + (result.traceback ? '\n\n' + result.traceback : ''));
+            }
+
+            displayResults(result);
+
+        } catch (error) {
+            document.getElementById('error-section').style.display = 'block';
+            document.getElementById('error-message').textContent = error.message;
+        } finally {
+            document.getElementById('loading-spinner').style.display = 'none';
+            document.getElementById('run-benchmark').disabled = false;
+        }
+    });
+
+    function displayResults(data) {
+        const pg = data.postgres;
+        const mongo = data.mongodb;
+
+        // Update summary cards
+        document.getElementById('pg-avg').textContent = pg.avg_latency_ms.toFixed(2);
+        document.getElementById('pg-ops').textContent = pg.ops_per_sec.toFixed(1);
+        document.getElementById('pg-count').textContent = pg.result_count;
+
+        document.getElementById('mongo-avg').textContent = mongo.avg_latency_ms.toFixed(2);
+        document.getElementById('mongo-ops').textContent = mongo.ops_per_sec.toFixed(1);
+        document.getElementById('mongo-count').textContent = mongo.result_count;
+
+        // Highlight winner
+        document.getElementById('postgres-card').classList.remove('winner');
+        document.getElementById('mongo-card').classList.remove('winner');
+        if (pg.avg_latency_ms < mongo.avg_latency_ms) {
+            document.getElementById('postgres-card').classList.add('winner');
+        } else if (mongo.avg_latency_ms < pg.avg_latency_ms) {
+            document.getElementById('mongo-card').classList.add('winner');
+        }
+
+        // Build metrics table
+        const metrics = [
+            ['Avg Latency (ms)', pg.avg_latency_ms, mongo.avg_latency_ms, 'lower'],
+            ['Median Latency (ms)', pg.median_latency_ms, mongo.median_latency_ms, 'lower'],
+            ['P95 Latency (ms)', pg.p95_latency_ms, mongo.p95_latency_ms, 'lower'],
+            ['Min Latency (ms)', pg.min_latency_ms, mongo.min_latency_ms, 'lower'],
+            ['Max Latency (ms)', pg.max_latency_ms, mongo.max_latency_ms, 'lower'],
+            ['Total Time (ms)', pg.total_time_ms, mongo.total_time_ms, 'lower'],
+            ['Ops/sec', pg.ops_per_sec, mongo.ops_per_sec, 'higher'],
+            ['Runs', pg.runs, mongo.runs, 'equal'],
+            ['Warm-up', pg.warmup, mongo.warmup, 'equal'],
+            ['Result Count', pg.result_count, mongo.result_count, 'equal']
+        ];
+
+        let tableHtml = '';
+        metrics.forEach(([label, pgVal, mongoVal, winType]) => {
+            let winner = '';
+            if (winType === 'lower') {
+                winner = pgVal < mongoVal ? '<span class="badge bg-primary">PostgreSQL</span>' :
+                         mongoVal < pgVal ? '<span class="badge bg-success">MongoDB</span>' : '<span class="badge bg-secondary">Tie</span>';
+            } else if (winType === 'higher') {
+                winner = pgVal > mongoVal ? '<span class="badge bg-primary">PostgreSQL</span>' :
+                         mongoVal > pgVal ? '<span class="badge bg-success">MongoDB</span>' : '<span class="badge bg-secondary">Tie</span>';
+            } else {
+                winner = '-';
+            }
+            tableHtml += `<tr><td>${label}</td><td>${typeof pgVal === 'number' ? pgVal.toFixed(3) : pgVal}</td><td>${typeof mongoVal === 'number' ? mongoVal.toFixed(3) : mongoVal}</td><td>${winner}</td></tr>`;
+        });
+        document.getElementById('metrics-table').innerHTML = tableHtml;
+
+        // Display notes
+        const notesContainer = document.getElementById('notes-container');
+        notesContainer.innerHTML = data.notes.map(note => `<div class="note-item">${note}</div>`).join('');
+
+        // Update charts
+        updateCharts(pg, mongo);
+
+        // Handle explain plans
+        if (data.postgres_explain || data.mongodb_explain) {
+            document.getElementById('explain-section').style.display = 'block';
+            document.getElementById('pg-explain').textContent = data.postgres_explain || 'N/A';
+            document.getElementById('mongo-explain').textContent = data.mongodb_explain || 'N/A';
+        } else {
+            document.getElementById('explain-section').style.display = 'none';
+        }
+
+        // Show results section
+        document.getElementById('results-section').style.display = 'block';
+    }
+
+    function updateCharts(pg, mongo) {
+        // Destroy existing charts
+        if (latencyChart) latencyChart.destroy();
+        if (opsChart) opsChart.destroy();
+
+        // Latency chart
+        const latencyCtx = document.getElementById('latencyChart').getContext('2d');
+        latencyChart = new Chart(latencyCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Avg', 'Median', 'P95', 'Min', 'Max'],
+                datasets: [
+                    {
+                        label: 'PostgreSQL',
+                        data: [pg.avg_latency_ms, pg.median_latency_ms, pg.p95_latency_ms, pg.min_latency_ms, pg.max_latency_ms],
+                        backgroundColor: 'rgba(51, 103, 145, 0.7)',
+                        borderColor: '#336791',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'MongoDB',
+                        data: [mongo.avg_latency_ms, mongo.median_latency_ms, mongo.p95_latency_ms, mongo.min_latency_ms, mongo.max_latency_ms],
+                        backgroundColor: 'rgba(77, 179, 61, 0.7)',
+                        borderColor: '#4db33d',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: { display: true, text: 'Latency (ms) - Lower is Better' }
+                },
+                scales: {
+                    y: { beginAtZero: true, title: { display: true, text: 'Milliseconds' } }
+                }
+            }
+        });
+
+        // Ops/sec chart
+        const opsCtx = document.getElementById('opsChart').getContext('2d');
+        opsChart = new Chart(opsCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Operations per Second'],
+                datasets: [
+                    {
+                        label: 'PostgreSQL',
+                        data: [pg.ops_per_sec],
+                        backgroundColor: 'rgba(51, 103, 145, 0.7)',
+                        borderColor: '#336791',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'MongoDB',
+                        data: [mongo.ops_per_sec],
+                        backgroundColor: 'rgba(77, 179, 61, 0.7)',
+                        borderColor: '#4db33d',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: { display: true, text: 'Throughput (ops/sec) - Higher is Better' }
+                },
+                scales: {
+                    y: { beginAtZero: true, title: { display: true, text: 'Operations/Second' } }
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}

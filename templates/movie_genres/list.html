@@ -1,0 +1,254 @@
+<!-- ============================================ -->
+<!-- templates/movie_genres/list.html -->
+<!-- ============================================ -->
+
+{% extends "base.html" %}
+
+{% block title %}Movie Genres - Admin Portal{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1 class="mb-4">
+            <i class="bi bi-link-45deg"></i> Movie-Genre Associations
+        </h1>
+    </div>
+</div>
+
+<!-- Filter Options -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" action="{{ url_for('list_movie_genres') }}" class="row g-3">
+            <div class="col-md-5">
+                <label for="movie_id" class="form-label">Filter by Movie ID</label>
+                <input type="number" class="form-control" id="movie_id" name="movie_id" 
+                       value="{{ request.args.get('movie_id', '') }}" 
+                       placeholder="Enter movie ID">
+            </div>
+            <div class="col-md-5">
+                <label for="genre_id" class="form-label">Filter by Genre ID</label>
+                <input type="number" class="form-control" id="genre_id" name="genre_id" 
+                       value="{{ request.args.get('genre_id', '') }}" 
+                       placeholder="Enter genre ID">
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-funnel"></i> Filter
+                </button>
+            </div>
+        </form>
+        {% if request.args.get('movie_id') or request.args.get('genre_id') %}
+        <div class="mt-3">
+            <a href="{{ url_for('list_movie_genres') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-x"></i> Clear Filters
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Summary Card -->
+{% if request.args.get('movie_id') and movie_info %}
+<div class="card mb-4 border-primary">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">
+            <i class="bi bi-film"></i> Movie: {{ movie_info.title }}
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <p class="mb-1"><strong>Movie ID:</strong> {{ movie_info.movie_id }}</p>
+                <p class="mb-1"><strong>Release Date:</strong> {{ movie_info.released_date|format_date }}</p>
+            </div>
+            <div class="col-md-6">
+                <p class="mb-1"><strong>Total Genres:</strong> <span class="badge bg-primary">{{ movie_genres|length }}</span></p>
+                <a href="{{ url_for('view_movie', movie_id=movie_info.movie_id) }}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-eye"></i> View Movie Details
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Add New Association Button -->
+<div class="mb-3">
+    <a href="{{ url_for('create_movie_genre') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Add Genre to Movie
+    </a>
+</div>
+
+<!-- Associations Table -->
+<div class="card">
+    <div class="card-body p-0">
+        {% if movie_genres %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Movie ID</th>
+                        <th>Movie Title</th>
+                        <th>Genre ID</th>
+                        <th>Genre Name</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for mg in movie_genres %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('view_movie', movie_id=mg.movie_id) }}" 
+                               class="text-decoration-none">
+                                {{ mg.movie_id }}
+                            </a>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('view_movie', movie_id=mg.movie_id) }}" 
+                               class="text-decoration-none fw-semibold">
+                                {{ mg.movie_title or 'Unknown Movie' }}
+                            </a>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('view_genre', genre_id=mg.genre_id) }}" 
+                               class="text-decoration-none">
+                                {{ mg.genre_id }}
+                            </a>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('view_genre', genre_id=mg.genre_id) }}" 
+                               class="text-decoration-none">
+                                <i class="bi bi-tag-fill text-primary"></i> 
+                                {{ mg.genre_name or 'Unknown Genre' }}
+                            </a>
+                        </td>
+                        <td class="text-end">
+                            <a href="{{ url_for('view_movie_genre', movie_id=mg.movie_id, genre_id=mg.genre_id) }}" 
+                               class="btn btn-sm btn-info" title="View">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <button type="button" class="btn btn-sm btn-danger" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#deleteAssociationModal"
+                                    data-movie-id="{{ mg.movie_id }}"
+                                    data-genre-id="{{ mg.genre_id }}"
+                                    data-movie-title="{{ (mg.movie_title or 'Unknown Movie')|e }}"
+                                    data-genre-name="{{ (mg.genre_name or 'Unknown Genre')|e }}"
+                                    data-delete-url="{{ url_for('delete_movie_genre', movie_id=mg.movie_id, genre_id=mg.genre_id) }}"
+                                    title="Remove">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        {% if movie_genres|length >= 100 %}
+        <div class="card-footer text-muted">
+            <i class="bi bi-info-circle"></i> Showing first 100 results. Use filters to narrow down.
+        </div>
+        {% endif %}
+        
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-link-45deg display-1 text-muted"></i>
+            <p class="lead mt-3">
+                {% if request.args.get('movie_id') or request.args.get('genre_id') %}
+                    No associations found matching your filters
+                {% else %}
+                    No movie-genre associations found
+                {% endif %}
+            </p>
+            <a href="{{ url_for('create_movie_genre') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Add First Association
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Quick Stats Card -->
+{% if not request.args.get('movie_id') and not request.args.get('genre_id') %}
+<div class="card mt-4">
+    <div class="card-header bg-light">
+        <h6 class="mb-0"><i class="bi bi-bar-chart"></i> Quick Stats</h6>
+    </div>
+    <div class="card-body">
+        <div class="row text-center">
+            <div class="col-md-4">
+                <h3 class="text-primary">{{ movie_genres|length }}</h3>
+                <p class="text-muted mb-0">Total Associations</p>
+            </div>
+            <div class="col-md-4">
+                <h3 class="text-success">{{ unique_movies|length if unique_movies else 0 }}</h3>
+                <p class="text-muted mb-0">Movies with Genres</p>
+            </div>
+            <div class="col-md-4">
+                <h3 class="text-info">{{ unique_genres|length if unique_genres else 0 }}</h3>
+                <p class="text-muted mb-0">Genres Used</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Shared Delete Modal -->
+<div class="modal fade" id="deleteAssociationModal" tabindex="-1" aria-labelledby="deleteAssociationLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteAssociationLabel">Confirm Removal</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Remove genre <strong data-role="genre-name">this genre</strong> from movie <strong data-role="movie-title">this movie</strong>?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" action="" id="deleteAssociationForm" class="d-inline">
+                    <button type="submit" class="btn btn-danger">Remove</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const deleteModal = document.getElementById('deleteAssociationModal');
+    if (!deleteModal) {
+        return;
+    }
+
+    const formEl = document.getElementById('deleteAssociationForm');
+    const genreNameEl = deleteModal.querySelector('[data-role="genre-name"]');
+    const movieTitleEl = deleteModal.querySelector('[data-role="movie-title"]');
+
+    deleteModal.addEventListener('show.bs.modal', function (event) {
+        const trigger = event.relatedTarget;
+        if (!trigger) {
+            return;
+        }
+
+        const movieTitle = trigger.getAttribute('data-movie-title') || '';
+        const genreName = trigger.getAttribute('data-genre-name') || '';
+        const deleteUrl = trigger.getAttribute('data-delete-url');
+
+        if (movieTitleEl) {
+            movieTitleEl.textContent = movieTitle;
+        }
+        if (genreNameEl) {
+            genreNameEl.textContent = genreName;
+        }
+        if (formEl && deleteUrl) {
+            formEl.action = deleteUrl;
+        }
+    });
+});
+</script>
+{% endblock %}

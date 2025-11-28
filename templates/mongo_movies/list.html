@@ -1,0 +1,92 @@
+<!-- ============================================ -->
+<!-- templates/mongo_movies/list.html -->
+<!-- ============================================ -->
+
+{% extends "base.html" %}
+
+{% block title %}Movies (MongoDB) - Admin Portal{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1 class="mb-4"><i class="bi bi-film"></i> Movies (MongoDB)</h1>
+    </div>
+</div>
+
+<!-- Search Box -->
+<div class="search-box">
+    <form method="get" action="{{ url_for('list_movies') }}">
+        <div class="input-group mb-4">
+            <input type="text" class="form-control" name="search"
+                   placeholder="Search movies by title..."
+                   value="{{ search_query }}">
+            <button class="btn btn-primary" type="submit">
+                <i class="bi bi-search"></i> Search
+            </button>
+            {% if search_query %}
+            <a href="{{ url_for('list_movies') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-x"></i> Clear
+            </a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+{% if search_query %}
+    <p class="text-muted">Found {{ movies|length }} movie(s) matching "{{ search_query }}"</p>
+{% endif %}
+
+<!-- Movies Table -->
+<div class="card">
+    <div class="card-body p-0">
+        {% if movies %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>Title</th>
+                        <th>Release Date</th>
+                        <th>Popularity</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for movie in movies %}
+                    <tr>
+                        <td>{{ movie.movie_id }}</td>
+                        <td>
+                            <a href="{{ url_for('view_movie', movie_id=movie.movie_id) }}"
+                               class="text-decoration-none fw-semibold">
+                                {{ movie.title }}
+                            </a>
+                        </td>
+                        <td>{{ movie.released_date|format_date }}</td>
+                        <td>{{ movie.popularity|format_popularity if movie.popularity else 'N/A' }}</td>
+                        <td class="text-end">
+                            <a href="{{ url_for('view_movie', movie_id=movie.movie_id) }}"
+                               class="btn btn-sm btn-info" title="View">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <a href="{{ url_for('edit_movie', movie_id=movie.movie_id) }}"
+                               class="btn btn-sm btn-warning" title="Edit">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-film display-1 text-muted"></i>
+            <p class="lead mt-3">No movies found</p>
+            <a href="{{ url_for('create_movie') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Create Your First Movie
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
