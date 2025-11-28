@@ -110,7 +110,7 @@ MONGO_DB = "moviedb"
 
 ### Start the Flask Server
 ```bash
-python app.py
+.\venv314\Scripts\python.exe .\app.py
 ```
 
 The application will be available at: `http://127.0.0.1:5000`
@@ -202,7 +202,13 @@ Toggle between PostgreSQL and MongoDB through the UI:
 ## Development Team
 
 Group 7 - INF2003 Database Systems
-- [Team Member Names]
+
+- Tan Yu Xuan (2400653)
+- Sidharth Vinod (2400635)
+- Boo Wai Yee,Terry (2402445)
+- Lim Bing Xian (2401649)
+- Premanand Aishwarya Shri (2401690)
+- Tay Wei Lin (2402961)
 
 ## License
 
