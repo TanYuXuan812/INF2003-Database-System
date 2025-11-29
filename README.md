@@ -220,6 +220,5 @@ This project is developed for educational purposes as part of the INF2003 Databa
 
 ## Acknowledgments
 
-- MovieLens Dataset
-- TMDB (The Movie Database) for movie metadata
-- SIT School of Computing
+- The Movies Dataset
+- TMDB (The Movie Database) API
