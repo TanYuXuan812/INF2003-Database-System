@@ -6,6 +6,7 @@ import re
 import statistics
 from dotenv import load_dotenv
 from datetime import datetime
+from pymongo.errors import DuplicateKeyError
 from admin_query import (
     admin_create_movie,
     admin_get_movie,
@@ -1299,6 +1300,9 @@ def create_movie():
 
         except ValueError as e:
             flash(f'Invalid input: {str(e)}', 'danger')
+        except DuplicateKeyError:
+            movie_id_val = movie_data.get('id', 'specified')
+            flash(f'Movie ID {movie_id_val} already exists. Please use a different ID.', 'danger')
         except Exception as e:
             flash(f'Error creating movie: {str(e)}', 'danger')
 
